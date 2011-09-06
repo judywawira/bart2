@@ -272,14 +272,14 @@ class Patient < ActiveRecord::Base
 
   def national_id_label
     return unless self.national_id
-    sex =  self.person.gender.match(/F/i) ? "(F)" : "(M)"
-    address = self.person.address.strip[0..24].humanize rescue ""
-    label = ZebraPrinter::StandardLabel.new
+    sex     = self.person.gender.to_s.match(/F/i) ? '(F)' : '(M)'
+    address = self.person.address.strip[0..24].humanize rescue ''
+    label   = ZebraPrinter::StandardLabel.new
     label.font_size = 2
     label.font_horizontal_multiplier = 2
     label.font_vertical_multiplier = 2
     label.left_margin = 50
-    label.draw_barcode(50,180,0,1,5,15,120,false,"#{self.national_id}")
+    label.draw_barcode(50, 180, 0, 1, 5, 15, 120, false, "#{self.national_id}")
     label.draw_multi_text("#{self.person.name.titleize}")
     label.draw_multi_text("#{self.national_id_with_dashes} #{self.person.birthdate_formatted}#{sex}")
     label.draw_multi_text("#{address}")
@@ -287,15 +287,14 @@ class Patient < ActiveRecord::Base
   end
   
    def lab_orders_label
-    lab_orders = Encounter.find(:last,:conditions =>["encounter_type = ? and patient_id = ?",
-        EncounterType.find_by_name("LAB ORDERS").id,self.id]).observations
+    lab_orders = Encounter.last(:conditions => ['encounter_type = ? and patient_id = ?',
+        EncounterType.find_by_name('LAB ORDERS').id, self.id]).observations
       labels = []
-      i = 0
 
-      while i <= lab_orders.size do
-        accession_number = "#{lab_orders[i].accession_number rescue nil}"
+      lab_orders.each_with_index do |lab_order, i|
+        accession_number = "#{lab_order.accession_number rescue nil}"
 
-        if accession_number != ""
+        unless accession_number.blank?
           label = 'label' + i.to_s
           label = ZebraPrinter::StandardLabel.new
           label.font_size = 2
@@ -304,31 +303,23 @@ class Patient < ActiveRecord::Base
           label.left_margin = 50
           label.draw_barcode(50,180,0,1,5,15,120,false,"#{accession_number}")
           label.draw_multi_text("#{self.person.name.titleize.delete("'")} #{self.national_id_with_dashes}")
-          label.draw_multi_text("#{lab_orders[i].name rescue nil}")
+          label.draw_multi_text("#{lab_order.name rescue nil}")
           label.draw_multi_text("#{accession_number rescue nil}")
-          label.draw_multi_text("#{lab_orders[i].obs_datetime.strftime("%d-%b-%Y %H:%M")}")
+          label.draw_multi_text("#{lab_order.obs_datetime.strftime('%d-%b-%Y %H:%M')}")
           labels << label
-          end
-          i = i + 1
+        end
       end
 
-      print_labels = []
-      label = 0
-      while label <= labels.size
-        print_labels << labels[label].print(1) if labels[label] != nil
-        label = label + 1
-      end
-
-      return print_labels
+      return labels.compact.map {|label| label.print(1) }
   end
 
   def filing_number_label(num = 1)
-    file = self.get_identifier('Filing Number')[0..9]
+    file      = self.get_identifier('Filing Number')[0..9]
     file_type = file.strip[3..4]
-    version_number=file.strip[2..2]
+    version_number = file.strip[2..2]
     number = file
-    len = number.length - 5
-    number = number[len..len] + "   " + number[(len + 1)..(len + 2)]  + " " +  number[(len + 3)..(number.length)]
+    len    = number.length - 5
+    number = number[len..len] + '   ' + number[(len + 1)..(len + 2)]  + ' ' +  number[(len + 3)..(number.length)]
 
     label = ZebraPrinter::StandardLabel.new
     label.draw_text("#{number}",75, 30, 0, 4, 4, 4, false)

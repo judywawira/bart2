@@ -5,19 +5,19 @@ module PropertiesHelper
     1.upto(12).each do | number |
       start_date = "01-#{number}-#{Date.today.year}".to_date
       end_date = (start_date + 1.month) - 1.day 
-      chart+=<<EOF
-<table id="#{end_date.strftime('%B')}" class="months">
-<caption class = 'title'>#{end_date.strftime('%B')}</caption>
-<tr>
-  <th>Sunday</th>
-  <th>Monday</th>
-  <th>Tuesday</th>
-  <th>Wednesday</th>
-  <th>Thursday</th>
-  <th>Friday</th>
-  <th>Saturday</th>
-</tr>
-EOF
+      chart += <<-EOF
+        <table id="#{end_date.strftime('%B')}" class="months">
+        <caption class = 'title'>#{end_date.strftime('%B')}</caption>
+        <tr>
+          <th>Sunday</th>
+          <th>Monday</th>
+          <th>Tuesday</th>
+          <th>Wednesday</th>
+          <th>Thursday</th>
+          <th>Friday</th>
+          <th>Saturday</th>
+        </tr>
+      EOF
  
       while (start_date <= end_date) 
         sunday = nil ; monday = nil ; tuesday = nil ; wednesday = nil
@@ -76,32 +76,32 @@ EOF
         friday_str = "#{friday}-#{start_date.strftime('%m-%Y')}".to_date rescue nil
         saturday_str = "#{saturday}-#{start_date.strftime('%m-%Y')}".to_date rescue nil
 
-        chart+=<<EOF
-<tr>
-  <td class='dates' id = '#{sunday_str}' onmousedown="addDate('#{sunday_str}')">#{sunday}</td>
-  <td class='dates' id = '#{monday_str}' onmousedown="addDate('#{monday_str}')">#{monday}</td>
-  <td class='dates' id = '#{tuesda_str}' onmousedown="addDate('#{tuesda_str}')">#{tuesday}</td>
-  <td class='dates' id = '#{wednesday_str}' onmousedown="addDate('#{wednesday_str}')">#{wednesday}</td>
-  <td class='dates' id = '#{thursday_str}' onmousedown="addDate('#{thursday_str}')">#{thursday}</td>
-  <td class='dates' id = '#{friday_str}' onmousedown="addDate('#{friday_str}')">#{friday}</td>
-  <td class='dates' id = '#{saturday_str}' onmousedown="addDate('#{saturday_str}')">#{saturday}</td>
-</tr>
-EOF
-        start_date+= 1.day
+        chart += <<-EOF
+          <tr>
+            <td class='dates' id = '#{sunday_str}' onmousedown="addDate('#{sunday_str}')">#{sunday}</td>
+            <td class='dates' id = '#{monday_str}' onmousedown="addDate('#{monday_str}')">#{monday}</td>
+            <td class='dates' id = '#{tuesda_str}' onmousedown="addDate('#{tuesda_str}')">#{tuesday}</td>
+            <td class='dates' id = '#{wednesday_str}' onmousedown="addDate('#{wednesday_str}')">#{wednesday}</td>
+            <td class='dates' id = '#{thursday_str}' onmousedown="addDate('#{thursday_str}')">#{thursday}</td>
+            <td class='dates' id = '#{friday_str}' onmousedown="addDate('#{friday_str}')">#{friday}</td>
+            <td class='dates' id = '#{saturday_str}' onmousedown="addDate('#{saturday_str}')">#{saturday}</td>
+          </tr>
+        EOF
+        start_date += 1.day
       end
     end
-    chart+='</table>'
-    container=<<EOF
-<div class = "container">
-#{chart}
-</div><br />
-EOF
+    chart += '</table>'
+    container = <<-EOF
+      <div class = "container">
+      #{chart}
+      </div><br />
+    EOF
     container
   end
 
   def calender
     content = ''
-    content+= chart
+    content += chart
   end
 
 end

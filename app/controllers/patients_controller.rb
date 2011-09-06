@@ -3,28 +3,28 @@ class PatientsController < ApplicationController
   
   def show
     session[:mastercard_ids] = []
-    session_date = session[:datetime].to_date rescue Date.today
-    @encounters = @patient.encounters.find_by_date(session_date)
+    session_date   = session[:datetime].to_date rescue Date.today
+    @encounters    = @patient.encounters.find_by_date(session_date)
     @prescriptions = @patient.orders.unfinished.prescriptions.all
-    @programs = @patient.patient_programs.all
-    @alerts = @patient.alerts
+    @programs      = @patient.patient_programs.all
+    @alerts        = @patient.alerts
     # This code is pretty hacky at the moment
-    @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
+    @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id})
     @restricted.each do |restriction|    
-      @encounters = restriction.filter_encounters(@encounters)
+      @encounters    = restriction.filter_encounters(@encounters)
       @prescriptions = restriction.filter_orders(@prescriptions)
-      @programs = restriction.filter_programs(@programs)
+      @programs      = restriction.filter_programs(@programs)
     end
     # render :template => 'dashboards/overview', :layout => 'dashboard'
 
-    @date = (session[:datetime].to_date rescue Date.today).strftime("%Y-%m-%d")
+    @date = (session[:datetime].to_date rescue Date.today).strftime('%Y-%m-%d')
 
-     @location = Location.find(session[:location_id]).name rescue ""
-     if @location.downcase == "outpatient" || params[:source]== 'opd'
-        render :template => 'dashboards/opdtreatment_dashboard', :layout => false
-     else
-        render :template => 'patients/index', :layout => false
-     end
+    @location = Location.find(session[:location_id]).name rescue ''
+    if @location.downcase == 'outpatient' or params[:source]== 'opd'
+      render :template => 'dashboards/opdtreatment_dashboard', :layout => false
+    else
+      render :template => 'patients/index', :layout => false
+    end
   end
 
   def opdcard
@@ -34,18 +34,18 @@ class PatientsController < ApplicationController
 
   def opdshow
     session_date = session[:datetime].to_date rescue Date.today
-    encounter_types = EncounterType.find(:all,:conditions =>["name IN (?)",
-        ['REGISTRATION','OUTPATIENT DIAGNOSIS','REFER PATIENT OUT?','OUTPATIENT RECEPTION','DISPENSING']]).map{|e|e.id}
-    @encounters = Encounter.find(:all,:select => "encounter_id , name encounter_type_name, count(*) c",
-      :joins => "INNER JOIN encounter_type ON encounter_type_id = encounter_type",
-      :conditions =>["patient_id = ? AND encounter_type IN (?) AND DATE(encounter_datetime) = ?",
-        params[:id],encounter_types,session_date],
-      :group => 'encounter_type').collect do |rec| 
-        if User.current_user.user_roles.map{|r|r.role}.join(',').match(/Registration|Clerk/i)
-          next unless rec.observations[0].to_s.match(/Workstation location:   Outpatient/i)
-        end
-        [ rec.encounter_id , rec.encounter_type_name , rec.c ] 
+    encounter_types = EncounterType.find(:all,:conditions =>['name IN (?)',
+        ['REGISTRATION', 'OUTPATIENT DIAGNOSIS', 'REFER PATIENT OUT?', 'OUTPATIENT RECEPTION', 'DISPENSING']]).map(&id)
+    @encounters = Encounter.all(
+        :select     => 'encounter_id, name encounter_type_name, count(*) c',
+        :joins      => 'INNER JOIN encounter_type ON encounter_type_id = encounter_type',
+        :conditions => ['patient_id = ? AND encounter_type IN (?) AND DATE(encounter_datetime) = ?', params[:id], encounter_types,session_date],
+        :group      => 'encounter_type').collect do |rec| 
+      if User.current_user.user_roles.map{|r|r.role}.join(',').match(/Registration|Clerk/i)
+        next unless rec.observations[0].to_s.match(/Workstation location:\s*Outpatient/i)
       end
+      [rec.encounter_id , rec.encounter_type_name , rec.c]
+    end
     
     render :template => 'dashboards/opdoverview_tab', :layout => false
   end
@@ -56,12 +56,12 @@ class PatientsController < ApplicationController
 
   def opdtreatment_tab
     @activities = [
-      ["Visit card","/patients/opdcard/#{params[:id]}"],
-      ["National ID (Print)","/patients/dashboard_print_national_id?id=#{params[:id]}&redirect=patients/opdtreatment"],
-      ["Referrals", "/encounters/referral/#{params[:id]}"],
-      ["Give drugs", "/encounters/opddrug_dispensing/#{params[:id]}"],
-      ["Vitals", "/report/data_cleaning"],
-      ["Outpatient diagnosis","/encounters/new?id=show&patient_id=#{params[:id]}&encounter_type=outpatient_diagnosis"]
+      ['Visit card',           "/patients/opdcard/#{params[:id]}"],
+      ['National ID (Print)',  "/patients/dashboard_print_national_id?id=#{params[:id]}&redirect=patients/opdtreatment"],
+      ['Referrals',            "/encounters/referral/#{params[:id]}"],
+      ['Give drugs',           "/encounters/opddrug_dispensing/#{params[:id]}"],
+      ['Vitals',               "/report/data_cleaning"],
+      ['Outpatient diagnosis', "/encounters/new?id=show&patient_id=#{params[:id]}&encounter_type=outpatient_diagnosis"]
     ]
     render :template => 'dashboards/opdtreatment_tab', :layout => false
   end
@@ -71,7 +71,7 @@ class PatientsController < ApplicationController
     type = EncounterType.find_by_name('TREATMENT')
     session_date = session[:datetime].to_date rescue Date.today
     @prescriptions = Order.find(:all,
-      :joins => "INNER JOIN encounter e USING (encounter_id)",
+      :joins      => 'INNER JOIN encounter e USING (encounter_id)',
       :conditions => ["encounter_type = ? AND e.patient_id = ? AND DATE(encounter_datetime) = ?",
         type.id,@patient.id,session_date])
 
@@ -89,8 +89,8 @@ class PatientsController < ApplicationController
     type = EncounterType.find_by_name('TREATMENT')
     session_date = session[:datetime].to_date rescue Date.today
     @prescriptions = Order.find(:all,
-      :joins => "INNER JOIN encounter e USING (encounter_id)",
-      :conditions => ["encounter_type = ? AND e.patient_id = ?",type.id,@patient.id])
+      :joins      => 'INNER JOIN encounter e USING (encounter_id)',
+      :conditions => ['encounter_type = ? AND e.patient_id = ?', type.id, @patient.id])
 
     @historical = @patient.orders.historical.prescriptions.all
     @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
@@ -103,32 +103,30 @@ class PatientsController < ApplicationController
 
   def guardians
     if @patient.blank?
-    	redirect_to :'clinic'
-    	return
+      redirect_to :clinic
     else
-		  @relationships = @patient.relationships rescue []
-		  @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
-		  @restricted.each do |restriction|
-		    @relationships = restriction.filter_relationships(@relationships)
-		  end
-    	render :template => 'dashboards/relationships_tab', :layout => false
-  	end
+      @relationships = @patient.relationships rescue []
+      @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
+      @restricted.each do |restriction|
+        @relationships = restriction.filter_relationships(@relationships)
+      end
+      render :template => 'dashboards/relationships_tab', :layout => false
+    end
   end
 
   def relationships
     if @patient.blank?
-    	redirect_to :'clinic'
-    	return
+      redirect_to :clinic
     else
       next_form = next_task(@patient)
       redirect_to next_form and return if next_form.match(/Reception/i)
-		  @relationships = @patient.relationships rescue []
-		  @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
-		  @restricted.each do |restriction|
-		    @relationships = restriction.filter_relationships(@relationships)
-		  end
-    	render :template => 'dashboards/relationships', :layout => 'dashboard' 
-  	end
+      @relationships = @patient.relationships rescue []
+      @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
+      @restricted.each do |restriction|
+        @relationships = restriction.filter_relationships(@relationships)
+      end
+      render :template => 'dashboards/relationships', :layout => 'dashboard'
+    end
   end
 
   def problems
@@ -139,23 +137,23 @@ class PatientsController < ApplicationController
     @links = []
     patient = Patient.find(params[:id])
 
-    @links << ["Demographics (Print)","/patients/print_demographics/#{patient.id}"]
-    @links << ["Visit Summary (Print)","/patients/dashboard_print_visit/#{patient.id}"]
-    @links << ["National ID (Print)","/patients/dashboard_print_national_id/#{patient.id}"]
+    @links << ['Demographics (Print)',  "/patients/print_demographics/#{patient.id}"]
+    @links << ['Visit Summary (Print)', "/patients/dashboard_print_visit/#{patient.id}"]
+    @links << ['National ID (Print)',   "/patients/dashboard_print_national_id/#{patient.id}"]
 
     if use_filing_number and not patient.get_identifier('Filing Number').blank?
-      @links << ["Filing Number (Print)","/patients/print_filing_number/#{patient.id}"]
+      @links << ['Filing Number (Print)', "/patients/print_filing_number/#{patient.id}"]
     end 
 
     if use_filing_number and patient.get_identifier('Filing Number').blank?
-      @links << ["Filing Number (Create)","/patients/set_filing_number/#{patient.id}"]
+      @links << ['Filing Number (Create)', "/patients/set_filing_number/#{patient.id}"]
     end 
 
     if GlobalProperty.use_user_selected_activities
-      @links << ["Change User Activities","/user/activities/#{User.current_user.id}?patient_id=#{patient.id}"]
+      @links << ['Change User Activities', "/user/activities/#{User.current_user.id}?patient_id=#{patient.id}"]
     end
 
-    @links << ["Recent Lab Orders Label","/patients/recent_lab_orders?patient_id=#{patient.id}"]
+    @links << ['Recent Lab Orders Label', "/patients/recent_lab_orders?patient_id=#{patient.id}"]
 
     render :template => 'dashboards/personal_tab', :layout => false
   end
@@ -165,7 +163,7 @@ class PatientsController < ApplicationController
   end
 
   def programs
-    @programs = @patient.patient_programs.all
+    @programs   = @patient.patient_programs.all
     @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
     @restricted.each do |restriction|
       @programs = restriction.filter_programs(@programs)
@@ -225,12 +223,12 @@ class PatientsController < ApplicationController
    
   def patient_demographics_label
     print_string = Patient.find(params[:id]).demographics_label 
-    send_data(print_string,:type=>"application/label; charset=utf-8", :stream=> false, :filename=>"#{params[:id]}#{rand(10000)}.lbl", :disposition => "inline")
+    send_data(print_string, :type=>"application/label; charset=utf-8", :stream => false, :filename=>"#{params[:id]}#{rand(10000)}.lbl", :disposition => "inline")
   end
   
   def national_id_label
     print_string = @patient.national_id_label rescue (raise "Unable to find patient (#{params[:patient_id]}) or generate a national id label for that patient")
-    send_data(print_string,:type=>"application/label; charset=utf-8", :stream=> false, :filename=>"#{params[:patient_id]}#{rand(10000)}.lbl", :disposition => "inline")
+    send_data(print_string,:type => "application/label; charset=utf-8", :stream => false, :filename=>"#{params[:patient_id]}#{rand(10000)}.lbl", :disposition => "inline")
   end
 
   def print_lab_orders
@@ -253,21 +251,21 @@ class PatientsController < ApplicationController
     patient = Patient.find(params[:patient_id])
     label_commands = patient.national_id_label + patient.filing_number_label
 
-    send_data(label_commands,:type=>"application/label; charset=utf-8", :stream=> false, :filename=>"#{patient.id}#{rand(10000)}.lbl", :disposition => "inline")
+    send_data(label_commands, :type => "application/label; charset=utf-8", :stream=> false, :filename => "#{patient.id}#{rand(10000)}.lbl", :disposition => "inline")
   end
  
   def visit_label
     print_string = @patient.visit_label rescue (raise "Unable to find patient (#{params[:patient_id]}) or generate a visit label for that patient")
-    send_data(print_string,:type=>"application/label; charset=utf-8", :stream=> false, :filename=>"#{params[:patient_id]}#{rand(10000)}.lbl", :disposition => "inline")
+    send_data(print_string, :type => "application/label; charset=utf-8", :stream=> false, :filename => "#{params[:patient_id]}#{rand(10000)}.lbl", :disposition => "inline")
   end
 
   def mastercard_record_label
     print_string = @patient.visit_label(params[:date].to_date) 
-    send_data(print_string,:type=>"application/label; charset=utf-8", :stream=> false, :filename=>"#{params[:patient_id]}#{rand(10000)}.lbl", :disposition => "inline")
+    send_data(print_string, :type => "application/label; charset=utf-8", :stream=> false, :filename=>"#{params[:patient_id]}#{rand(10000)}.lbl", :disposition => "inline")
   end
 
   def mastercard_menu
-    render :layout => "menu"
+    render :layout => 'menu'
     @patient_id = params[:patient_id]
   end
 
@@ -281,23 +279,20 @@ class PatientsController < ApplicationController
     @show_mastercard_counter = false
     
     if params[:patient_id].blank?
-
       @patient_id = session[:mastercard_ids][session[:mastercard_counter]]
-       
     elsif session[:mastercard_ids].length.to_i != 0
       @patient_id = params[:patient_id]
     else
       @patient_id = params[:patient_id]
     end
 
-    unless params.include?("source")
+    unless params.include?('source')
       @source = params[:source] rescue nil
     else
       @source = nil
     end
 
-    render :layout => false
-    
+    render :layout => false    
   end
 
   def mastercard_printable
@@ -308,18 +303,18 @@ class PatientsController < ApplicationController
     @show_mastercard_counter = false
 
     if params[:patient_id].blank?
-
       @show_mastercard_counter = true
 
-      if !params[:current].blank?
+      unless params[:current].blank?
         session[:mastercard_counter] = params[:current].to_i - 1
       end
-      @prev_button_class = "yellow"
-      @next_button_class = "yellow"
+
+      @prev_button_class = 'yellow'
+      @next_button_class = 'yellow'
       if params[:current].to_i ==  1
-        @prev_button_class = "gray"
+        @prev_button_class = 'gray'
       elsif params[:current].to_i ==  session[:mastercard_ids].length
-        @next_button_class = "gray"
+        @next_button_class = 'gray'
       else
 
       end
@@ -344,7 +339,7 @@ class PatientsController < ApplicationController
     @date = params[:date].to_date
     @patient = Patient.find(@patient_id)
     @visits = Mastercard.visits(@patient,@date)
-    render :layout => "menu"
+    render :layout => 'menu'
   end
 
   def next_available_arv_number
@@ -353,10 +348,10 @@ class PatientsController < ApplicationController
   end
   
   def assigned_arv_number
-    assigned_arv_number = PatientIdentifier.find(:all,:conditions => ["voided = 0 AND identifier_type = ?",
-        PatientIdentifierType.find_by_name("ARV Number").id]).collect{|i|
+    assigned_arv_number = PatientIdentifier.find(:all,:conditions => ['voided = 0 AND identifier_type = ?',
+        PatientIdentifierType.find_by_name('ARV Number').id]).collect do |i|
       i.identifier.gsub(PatientIdentifier.site_prefix,'').strip.to_i
-    } rescue nil
+    end rescue nil
     render :text => assigned_arv_number.sort.to_json rescue nil 
   end
 
@@ -366,21 +361,21 @@ class PatientsController < ApplicationController
       @patient = Patient.find(params[:id])
       @edit_page = Patient.edit_mastercard_attribute(params[:field].to_s)
 
-      if @edit_page == "guardian"
+      if @edit_page == 'guardian'
         @guardian = {}
         @patient.person.relationships.map{|r| @guardian[Person.find(r.person_b).name] = Person.find(r.person_b).id.to_s;'' }
         if  @guardian == {}
-          redirect_to :controller => "relationships" , :action => "search",:patient_id => @patient_id
+          redirect_to :controller => 'relationships' , :action => 'search', :patient_id => @patient_id
         end
       end
     else
       @patient_id = params[:patient_id]
       Patient.save_mastercard_attribute(params)
-      if params[:source].to_s == "opd"
+      if params[:source].to_s == 'opd'
         redirect_to "/patients/opdcard/#{@patient_id}" and return
 
       else
-        redirect_to :action => "mastercard",:patient_id => @patient_id and return
+        redirect_to :action => 'mastercard', :patient_id => @patient_id and return
       end
     end
   end
@@ -418,16 +413,16 @@ class PatientsController < ApplicationController
   end
 
   def export_to_csv
-    ( Patient.find(:all,:limit => 10) || [] ).each do | patient |
+    ( Patient.all(:limit => 10) || [] ).each do | patient |
       csv_string = FasterCSV.generate do |csv|
         # header row
         csv << ["ARV number", "National ID"]
         csv << [patient.arv_number, patient.national_id]
-        csv << ["Name", "Age","Sex","Init Wt(Kg)","Init Ht(cm)","BMI","Transfer-in"]
+        csv << ["Name", "Age", "Sex", "Init Wt(Kg)", "Init Ht(cm)", "BMI","Transfer-in"]
         transfer_in = patient.person.observations.recent(1).question("HAS TRANSFER LETTER").all rescue nil
         transfer_in.blank? == true ? transfer_in = 'NO' : transfer_in = 'YES'
         csv << [patient.name,patient.person.age, patient.person.sex,patient.initial_weight,patient.initial_height,patient.initial_bmi,transfer_in]
-        csv << ["Location", "Land-mark","Occupation","Init Wt(Kg)","Init Ht(cm)","BMI","Transfer-in"]
+        csv << ["Location", "Land-mark", "Occupation", "Init Wt(Kg)", "Init Ht(cm)", "BMI", "Transfer-in"]
 
 =begin
         # data rows
@@ -446,25 +441,18 @@ class PatientsController < ApplicationController
 
   def print_mastercard
     if @patient
-      t1 = Thread.new{
-        Kernel.system "htmldoc --webpage --landscape --linkstyle plain --left 1cm --right 1cm --top 1cm --bottom 1cm -f /tmp/output-" +
-          session[:user_id].to_s + ".pdf http://" + request.env["HTTP_HOST"] + "\"/patients/mastercard_printable?patient_id=" +
-          @patient.id.to_s + "\"\n"
-      }
-
-      t2 = Thread.new{
-        sleep(5)
-        Kernel.system "lpr /tmp/output-" + session[:user_id].to_s + ".pdf\n"
-      }
-
-      t3 = Thread.new{
-        sleep(10)
-        Kernel.system "rm /tmp/output-" + session[:user_id].to_s + ".pdf\n"
-      }
-
+      t1 = Thread.new do
+        Kernel.system <<-EOC
+htmldoc --webpage --landscape --linkstyle plain --left 1cm --right 1cm --top 1cm --bottom 1cm -f /tmp/output-#{session[:user_id]}.pdf "http://#{request.env['HTTP_HOST']}/patients/mastercard_printable?patient_id=#{@patient.id}"
+sleep 5
+lpr /tmp/output-#{session[:user_id]}.pdf
+sleep 5
+rm /tmp/output-#{session[:user_id]}.pdf
+        EOC
+      end
     end
 
-    redirect_to "/patients/mastercard?patient_id=#{@patient.id}" and return
+    redirect_to "/patients/mastercard?patient_id=#{@patient.id}"
   end
   
   def demographics
@@ -473,20 +461,20 @@ class PatientsController < ApplicationController
    
   def index
     session[:mastercard_ids] = []
-    session_date = session[:datetime].to_date rescue Date.today
-    @encounters = @patient.encounters.find_by_date(session_date)
+    session_date   = session[:datetime].to_date rescue Date.today
+    @encounters    = @patient.encounters.find_by_date(session_date)
     @prescriptions = @patient.orders.unfinished.prescriptions.all
-    @programs = @patient.patient_programs.all
-    @alerts = @patient.alerts
+    @programs      = @patient.patient_programs.all
+    @alerts        = @patient.alerts
     # This code is pretty hacky at the moment
-    @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
+    @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id})
     @restricted.each do |restriction|
-      @encounters = restriction.filter_encounters(@encounters)
+      @encounters    = restriction.filter_encounters(@encounters)
       @prescriptions = restriction.filter_orders(@prescriptions)
-      @programs = restriction.filter_programs(@programs)
+      @programs      = restriction.filter_programs(@programs)
     end
 
-    @date = (session[:datetime].to_date rescue Date.today).strftime("%Y-%m-%d")
+    @date = (session[:datetime].to_date rescue Date.today).strftime('%Y-%m-%d')
 
     render :template => 'patients/index', :layout => false
   end
@@ -501,9 +489,9 @@ class PatientsController < ApplicationController
     # This code is pretty hacky at the moment
     @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
     @restricted.each do |restriction|
-      @encounters = restriction.filter_encounters(@encounters)
+      @encounters    = restriction.filter_encounters(@encounters)
       @prescriptions = restriction.filter_orders(@prescriptions)
-      @programs = restriction.filter_programs(@programs)
+      @programs      = restriction.filter_programs(@programs)
     end
 
     render :template => 'dashboards/overview_tab', :layout => false
@@ -519,17 +507,16 @@ class PatientsController < ApplicationController
     # This code is pretty hacky at the moment
     @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
     @restricted.each do |restriction|
-      @encounters = restriction.filter_encounters(@encounters)
+      @encounters    = restriction.filter_encounters(@encounters)
       @prescriptions = restriction.filter_orders(@prescriptions)
-      @programs = restriction.filter_programs(@programs)
+      @programs      = restriction.filter_programs(@programs)
     end
 
     render :template => 'dashboards/visit_history_tab', :layout => false
   end
 
   def past_visits_summary
-    @previous_visits  = Encounter.get_previous_encounters(params[:patient_id])
-
+    @previous_visits = Encounter.get_previous_encounters(params[:patient_id])
     @encounter_dates = @previous_visits.map{|encounter| encounter.encounter_datetime.to_date}.uniq.reverse.first(6) rescue []
 
     @past_encounter_dates = []
@@ -541,7 +528,7 @@ class PatientsController < ApplicationController
   end
 
   def treatment_dashboard
-    @amount_needed = 0
+    @amount_needed    = 0
     @amounts_required = 0
 
     type = EncounterType.find_by_name('TREATMENT')
@@ -549,13 +536,11 @@ class PatientsController < ApplicationController
     Order.find(:all,
       :joins => "INNER JOIN encounter e USING (encounter_id)",
       :conditions => ["encounter_type = ? AND e.patient_id = ? AND DATE(encounter_datetime) = ?",
-        type.id,@patient.id,session_date]).each{|order|
+        type.id,@patient.id,session_date]).each do |order|
       
-      @amount_needed = @amount_needed + (order.drug_order.amount_needed.to_i rescue 0)
-
+      @amount_needed    = @amount_needed    + (order.drug_order.amount_needed.to_i rescue 0)
       @amounts_required = @amounts_required + (order.drug_order.total_required rescue 0)
-
-    }
+    end
 
     @dispensed_order_id = params[:dispensed_order_id]
     render :template => 'dashboards/treatment_dashboard', :layout => false
@@ -570,21 +555,9 @@ class PatientsController < ApplicationController
   end
 
   def general_mastercard
-    @type = nil
-    
-    case params[:type]
-    when "1"
-      @type = "yellow"
-    when "2"
-      @type = "green"
-    when "3"
-      @type = "pink"
-    when "4"
-      @type = "blue"
-    end
-
+    @type       = [nil, 'yellow', 'green', 'pink', 'blue'][params[:type].to_i]
     @mastercard = Mastercard.demographics(@patient)
-    @visits = Mastercard.visits(@patient)   # (@patient, (session[:datetime].to_date rescue Date.today))
+    @visits     = Mastercard.visits(@patient)   # (@patient, (session[:datetime].to_date rescue Date.today))
 
     render :layout => false
   end
@@ -642,8 +615,5 @@ class PatientsController < ApplicationController
     @lab_order_labels = patient.get_recent_lab_orders_label
     @patient_id = params[:patient_id]
   end
-  
-  private
-  
-  
+
 end

@@ -1,6 +1,6 @@
 class PeopleController < ApplicationController
   def index
-    redirect_to "/clinic"
+    redirect_to '/clinic'
   end
 
   def new
@@ -11,20 +11,26 @@ class PeopleController < ApplicationController
   end
 
   def create_remote
-    person_params = {"occupation"=> params[:occupation],
- "age_estimate"=> params['patient_age']['age_estimate'],
- "cell_phone_number"=> params['cell_phone']['identifier'],
- "birth_month"=> params[:patient_month],
- "addresses"=>{ "address2" => params['p_address']['identifier'],
-                "address1" => params['p_address']['identifier'],
- "city_village"=> params['patientaddress']['city_village'],
- "county_district"=> params[:birthplace] },
- "gender" => params['patient']['gender'],
- "birth_day" => params[:patient_day],
- "names"=> {"family_name2"=>"Unknown",
- "family_name"=> params['patient_name']['family_name'],
- "given_name"=> params['patient_name']['given_name'] },
- "birth_year"=> params[:patient_year] }
+    person_params = {
+      'occupation'        => params[:occupation],
+      'age_estimate'      => params[:patient_age][:age_estimate],
+      'cell_phone_number' => params[:cell_phone][:identifier],
+      'birth_month'       => params[:patient_month],
+      'addresses'         => {
+        'address1'        => params[:p_address][:identifier],
+        'address2'        => params[:p_address]['identifier'],
+        'city_village'    => params[:patientaddress][:city_village],
+        'county_district' => params[:birthplace]
+      },
+      'gender'            => params[:patient][:gender],
+      'birth_day'         => params[:patient_day],
+      'birth_year'        => params[:patient_year],
+      'names'             => {
+        'family_name2'    => 'Unknown',
+        'family_name'     => params[:patient_name][:family_name],
+        'given_name'      => params[:patient_name][:given_name]
+      }
+    }
 
     #raise person_params.to_yaml
     if User.current_user.blank?
@@ -37,10 +43,10 @@ class PeopleController < ApplicationController
 
     person = Person.create_from_form(person_params)
     if person
-      patient = Patient.new()
+      patient = Patient.new
       patient.patient_id = person.id
       patient.save
-      patient.national_id_label 
+      patient.national_id_label
     end
     #render :text => person.demographics.to_json
     render :text => person.remote_demographics.to_json
@@ -54,8 +60,8 @@ class PeopleController < ApplicationController
   end
   
   def art_information
-    national_id = params["person"]["patient"]["identifiers"]["National id"] rescue nil
-    art_info = Patient.art_info_for_remote(national_id)
+    national_id = params['person']['patient']['identifiers']['National id'] rescue nil
+    art_info    = Patient.art_info_for_remote(national_id)
     render :text => art_info.to_json
   end
  
@@ -112,14 +118,11 @@ class PeopleController < ApplicationController
       unless (params[:relation].blank?)
         redirect_to search_complete_url(person.id, params[:relation]) and return
       else
-
-       tb_session = false
-       if User.current_user.activities.include?('Manage Lab Orders') or User.current_user.activities.include?('Manage Lab Results') or
-        User.current_user.activities.include?('Manage Sputum Submissions') or User.current_user.activities.include?('Manage TB Clinic Visits') or
-         User.current_user.activities.include?('Manage TB Reception Visits') or User.current_user.activities.include?('Manage TB Registration Visits') or
-          User.current_user.activities.include?('Manage HIV Status Visits')
-         tb_session = true
-       end
+        if (User.current_user.activities & ['Manage Lab Orders', 'Manage Lab Results', 'Manage Sputum Submissions', 'Manage TB Clinic Visits', 'Manage TB Reception Visits', 'Manage TB Registration Visits', 'Manage HIV Status Visits']).empty?
+          tb_session = false
+        else
+          tb_session = true
+        end
 
         if use_filing_number and not tb_session
           person.patient.set_filing_number 
@@ -136,23 +139,23 @@ class PeopleController < ApplicationController
       end
     else
       # Does this ever get hit?
-      redirect_to :action => "index"
+      redirect_to :action => 'index'
     end
   end
 
   def set_datetime
     if request.post?
-      unless params[:set_day]== "" or params[:set_month]== "" or params[:set_year]== ""
+      unless params[:set_day] == '' or params[:set_month]== '' or params[:set_year]== ''
         # set for 1 second after midnight to designate it as a retrospective date
         date_of_encounter = Time.mktime(params[:set_year].to_i,
-                                        params[:set_month].to_i,                                
-                                        params[:set_day].to_i,0,0,1) 
+                                        params[:set_month].to_i,
+                                        params[:set_day].to_i, 0, 0, 1) 
         session[:datetime] = date_of_encounter #if date_of_encounter.to_date != Date.today
       end
       unless params[:id].blank?
         redirect_to next_task(Patient.find(params[:id])) 
       else
-        redirect_to :action => "index"
+        redirect_to :action => 'index'
       end
     end
     @patient_id = params[:id]
@@ -161,16 +164,16 @@ class PeopleController < ApplicationController
   def reset_datetime
     session[:datetime] = nil
     if params[:id].blank?
-      redirect_to :action => "index" and return
+      redirect_to :action => 'index'
     else
-      redirect_to "/patients/show/#{params[:id]}" and return
+      redirect_to "/patients/show/#{params[:id]}"
     end
   end
 
   def find_by_arv_number
     if request.post?
-      redirect_to :action => 'search' ,
-        :identifier => "#{PatientIdentifier.site_prefix} #{params[:arv_number]}" and return
+      redirect_to :action => 'search',
+          :identifier => "#{PatientIdentifier.site_prefix} #{params[:arv_number]}"
     end
   end
   
@@ -183,7 +186,7 @@ class PeopleController < ApplicationController
     traditional_authorities = traditional_authorities.map do |t_a|
       "<li value='#{t_a.name}'>#{t_a.name}</li>"
     end
-    render :text => traditional_authorities.join('') and return
+    render :text => traditional_authorities.join('')
   end
 
     # Regions containing the string given in params[:value]
@@ -194,7 +197,7 @@ class PeopleController < ApplicationController
     regions = regions.map do |r|
       "<li value='#{r.name}'>#{r.name}</li>"
     end
-    render :text => regions.join('') and return
+    render :text => regions.join('')
   end
 
     # Districts containing the string given in params[:value]
@@ -206,7 +209,7 @@ class PeopleController < ApplicationController
     districts = districts.map do |d|
       "<li value='#{d.name}'>#{d.name}</li>"
     end
-    render :text => districts.join('') and return
+    render :text => districts.join('')
   end
 
     # Villages containing the string given in params[:value]
@@ -218,7 +221,7 @@ class PeopleController < ApplicationController
     villages = villages.map do |v|
       "<li value='#{v.name}'>#{v.name}</li>"
     end
-    render :text => villages.join('') and return
+    render :text => villages.join('')
   end
   
   # Landmark containing the string given in params[:value]
@@ -227,7 +230,7 @@ class PeopleController < ApplicationController
     landmarks = landmarks.map do |v|
       "<li value='#{v.address1}'>#{v.address1}</li>"
     end
-    render :text => landmarks.join('') and return
+    render :text => landmarks.join('')
   end
 
 private
