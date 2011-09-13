@@ -8,6 +8,11 @@ class GlobalProperty < ActiveRecord::Base
   end  
 
   def self.use_user_selected_activities
-    GlobalProperty.find_by_property('use.user.selected.activities').property_value == "yes" rescue false
+    self.find_by_property('use.user.selected.activities').property_value == 'yes' rescue false
   end
+
+  def self.[](key, default=nil)
+    self.find_by_property(key).try(:property_value) || default
+  end
+
 end
