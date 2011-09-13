@@ -33,9 +33,8 @@ class PatientsController < ApplicationController
   end
 
   def opdshow
-    session_date = session[:datetime].to_date rescue Date.today
-    encounter_types = EncounterType.find(:all,:conditions =>['name IN (?)',
-        ['REGISTRATION', 'OUTPATIENT DIAGNOSIS', 'REFER PATIENT OUT?', 'OUTPATIENT RECEPTION', 'DISPENSING']]).map(&id)
+    session_date    = session[:datetime].to_date rescue Date.today
+    encounter_types = EncounterType.all(:conditions => {'name' => ['REGISTRATION', 'OUTPATIENT DIAGNOSIS', 'REFER PATIENT OUT?', 'OUTPATIENT RECEPTION', 'DISPENSING']}).map(&:id)
     @encounters = Encounter.all(
         :select     => 'encounter_id, name encounter_type_name, count(*) c',
         :joins      => 'INNER JOIN encounter_type ON encounter_type_id = encounter_type',
