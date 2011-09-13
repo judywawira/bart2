@@ -1,20 +1,20 @@
 <style>
-  .tt_controls_date_of_confirmatory_hiv_test #num { display:none; }
+  .tt_controls_tb_registration_number_at_previous_location #Unknown { display:block; }
+  .tt_controls_weight_at_tb_initiation #Unknown { display:block; }
 
-  .tt_controls_date_art_last_taken #num { display:none; }
-
-  .tt_controls_date_of_confirmatory_hiv_test table {  position: absolute; top: -360px; }
-
-  .tt_controls_date_art_last_taken table {  position: absolute; top: -360px; }
-
-  .tt_controls_last_arv_drugs_taken .keyboard { display:none; }
-  #tt_page_last_arv_drugs_taken .options{height:450px;}
-  #tt_page_last_arv_drugs_taken .options li{font-size:35px;}
-  #space {display:inline;}
 </style>
 
 <script>
   var tt_cancel_destination = "/patients/show/<%= @patient.patient_id %>"
+  
+  function summary() {
+    var display = "<div><span class='title' style='font-size:40px;'>" + "Refer Patient to Clinician" + "</span></div>";
+    display += "<div><hr /><br /><span class='title' style='font-size:25px;'>Reason: Smear -ve patient </span></div>";
+    $('inputFrame'+tstCurrentPage).innerHTML = '<div id="summary">' + display + '</div>' ;
+    $("clearButton").style.display = "none";
+
+  }
+
 </script>
 
 <% if @patient.patient_programs.current.local.map(&:program).map(&:name).include?('TB PROGRAM') %>
@@ -41,18 +41,60 @@
     {:id => "tb_treatment",
      :helpText => 'Ever received TB treatment'} %>
 
-  <label for='reason_for_clinic_visit'>Reason for clinical visit</label>
-    <%= touch_select_tag "REASON FOR CLINICAL VISIT",
-      @patient, options_for_select(@select_options['reason_for_tb_clinic_visit']),
-      {:id => "reason_for_clinic_visit"}%>
+  <%= touch_yes_no_unknown_tag "Transfer in", @patient, nil,
+      {:id => "transfer_in",
+       :condition => "$('tb_treatment').value =='YES'",
+       :helpText => 'Transfer in?'} %>
 
-  <%= touch_yes_no_unknown_tag "SEND SMS", @patient, nil,
-    {:id => "send_sms",
-     :helpText => 'Can we send you an SMS for TB follow-up?'} %>
+  <%= touch_text_field_tag "Clinic Location", @patient, nil,
+      {:id => "location_of_tb_initiation",
+       :condition => "$('transfer_in').value =='YES'",
+       :ajaxURL => '/people/tb_initialization_district?',
+       :allowFreeText => true,
+       :helpText => 'Location of TB initiation'} %>
 
+  <%= touch_date_tag "CONFIRMATORY HIV TEST DATE", @patient, nil,
+			{:id => "date_of_tb_initiation",
+			 :condition => "$('transfer_in').value =='YES'",
+			 :max => "#{session[:datetime].to_date rescue Date.today}",
+			 :helpText => "Date of TB initiation"} %>
+
+  <%= touch_text_field_tag "TB REGISTRATION NUMBER", @patient, nil,
+			{	:id => "previous_tb_registration_number",
+			  :field_type => 'number',
+			  :condition => "$('transfer_in').value =='YES'",
+			  :tt_pageStyleClass => "Numeric NumbersOnly",
+				:helpText => "TB registration number at previous location" } %>
+
+  <%= touch_text_field_tag "PREVIOUS WEIGHT", @patient, nil,
+			{	:id => "weight_at_tb_initiation",
+			  :field_type => 'number',
+			  :condition => "$('transfer_in').value =='YES'",
+			  :tt_pageStyleClass => "Numeric NumbersOnlyWithDecimal",
+				:helpText => "Weight at TB initiation" } %>
+
+  <%= touch_select_tag "LAST ART DRUGS TAKEN", @patient, options_for_select([['',''],['RH','Rifampicin and isoniazid'],['RHZ','Rifampicin isoniazid and pyrazinamide'], ['E','Ethambutol']]),
+			{:id => "last_tb_drugs_taken",
+			 :condition => "$('transfer_in').value =='YES'",
+			 :helpText => "Last TB drugs taken" } %>
+
+  <%reason_for_clinic_visit = 'Smear -ve'%>
+  <% if @tb_status %>
+     <%reason_for_clinic_visit = 'Smear +ve'%>
+  <%end%>
+  
+  <%= touch_hidden_tag("REASON FOR CLINICAL VISIT", @patient.id, "#{reason_for_clinic_visit}", {:id => "reason_for_clinic_visit"}) %>
+
+  <%  if @cell_number.to_i != 0 %>
+
+    <%= touch_yes_no_unknown_tag "SEND SMS", @patient, nil,
+      {:id => "send_sms",
+       :helpText => 'Can we send you an SMS for TB follow-up?'} %>
+
+  <% end %>
   <%= touch_yes_no_unknown_tag "Follow up agreement", @patient, nil,
     {:id => "follow_up_agreement",
-     :helpText => 'Can we visit you at home for TB follow-up?'} %>
+     :helpText => 'Can we follow-up with you for TB treatment?'} %>
 
   <%
     date = session[:datetime].to_date rescue Date.today
@@ -60,14 +102,12 @@
               :conditions => ["DATE(encounter_datetime) = ? AND patient_id = ? AND encounter_type = ?",
               date,@patient.id,EncounterType.find_by_name('TB CLINIC VISIT').id])
   %>
-
-  <% if encounter.blank? %>
-    <%= touch_yes_no_unknown_tag "ANY NEED TO SEE A CLINICIAN", @patient, nil,
-      {:id => "need_to_see_clinician",
-       :helpText => "Any need to see a clinician?"
-     } %>
+  
+  <% if !@tb_status %>
+    <label for='summary'>Summary</label>
+    <%= text_field_tag :summary, nil, { :tt_onLoad => "summary();", :optional => "true", :tt_pageStyleClass => "NoControls" , :helpText => ''} %>
   <%end%>
-
+  
   <%= submit_tag "Finish" %>    
 </form>
 <% end %>

@@ -47,7 +47,7 @@
           {:id => "guardian_present",
            :multiple => false,
            :optional => false,
-           :tt_onUnLoad => "forcePatientPresentYes(),setTimeout(cleanup_guardian_options() , 500),alert('after');" } %>
+           :tt_onUnLoad => "forcePatientPresentYes(),setTimeout(cleanup_guardian_options() , 500)" } %>
         <%= hidden_field_tag("observations[][value_coded_or_text]", nil) %>
         <%= hidden_field_tag("observations[][concept_name]", "GUARDIAN PRESENT") %>
         <%= hidden_field_tag("observations[][patient_id]", @patient.id) %>
@@ -66,11 +66,7 @@
         <%= hidden_field_tag("observations[][obs_datetime]", DateTime.now()) %>
     <% end %>
   <% else %>
-    <%= hidden_field_tag("observations[][value_text]", "Yes") %>
-    <%= hidden_field_tag("observations[][value_coded_or_text]", nil) %>
-    <%= hidden_field_tag("observations[][concept_name]", "GUARDIAN PRESENT") %>
-    <%= hidden_field_tag("observations[][patient_id]", @patient.id) %>
-    <%= hidden_field_tag("observations[][obs_datetime]", DateTime.now()) %>
+    <%= touch_hidden_tag("GUARDIAN PRESENT", @patient.id, "Yes", {:id=>"guardian_present"}) %>
   <% end %>
   <% session[:guardian_added] = nil %>
 

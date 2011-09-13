@@ -208,6 +208,14 @@ class PeopleController < ApplicationController
     render :text => districts.join
   end
 
+  def tb_initialization_district
+    districts = District.find(:all, :order => 'name')
+    districts = districts.map do |d|
+      "<li value='#{d.name}'>#{d.name}</li>"
+    end
+    render :text => districts.join('') and return
+  end
+
     # Villages containing the string given in params[:value]
   def village
     traditional_authority_id = TraditionalAuthority.find_by_name("#{params[:filter_value]}").id

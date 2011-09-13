@@ -5,10 +5,6 @@
 <script>
   var tt_cancel_destination = "/patients/show/<%= @patient.patient_id %>";
 
-  function showTaskName(){
-    $('inputFrame'+tstCurrentPage).innerHTML = '<div id="summary"><div><span class="title" style="font-size:40px;">Next Task: TB Registration</span></div></div>';
-  }
-
 /*
   function set_TB_program_values() {
     var tb_type = $('touchscreenInput'+tstCurrentPage).value;
@@ -48,55 +44,55 @@
 */
 
   function set_TB_program_values() {
-    var tb_type = $('touchscreenInput'+tstCurrentPage).value;
-    var form = $('appointment');
-    if (tb_type == "Multi-drug resistant"){
-      newElement = document.createElement("input")
-      newElement.setAttribute("name",'programs[][patient_program_id]')
-      newElement.setAttribute("type","hidden");
-      form.appendChild(newElement);
+	var tb_type = $('touchscreenInput'+tstCurrentPage).value;
+	var form = $('appointment');
+	if (tb_type == "Multi-drug resistant") {
+		newElement = document.createElement("input")
+		newElement.setAttribute("name",'programs[][patient_program_id]')
+		newElement.setAttribute("type","hidden");
+		form.appendChild(newElement);
 
-      newElement = document.createElement("input")
-      newElement.setAttribute("name",'programs[][program_id]')
-      newElement.setAttribute("type","hidden");
-      newElement.value = <%="#{Program.find_by_name('MDR-TB PROGRAM').id}"%>
-      form.appendChild(newElement);
+		newElement = document.createElement("input")
+		newElement.setAttribute("name",'programs[][program_id]')
+		newElement.setAttribute("type","hidden");
+		newElement.value = <%="#{Program.find_by_name('MDR-TB PROGRAM').id}"%>
+		form.appendChild(newElement);
 
-      newElement = document.createElement("input")
-      newElement.setAttribute("name",'programs[][location_id]')
-      newElement.setAttribute("type","hidden");
-      newElement.value = <%="#{Location.current_health_center.id}"%>
-      form.appendChild(newElement);
+		newElement = document.createElement("input")
+		newElement.setAttribute("name",'programs[][location_id]')
+		newElement.setAttribute("type","hidden");
+		newElement.value = <%="#{Location.current_health_center.id}"%>
+		form.appendChild(newElement);
 
-      newElement = document.createElement("input")
-      newElement.setAttribute("name",'programs[][states][][state]')
-      newElement.setAttribute("type","hidden");
-      //newElement.value = 'Waiting for treatment'
-      newElement.value = 'Symptomatic but NOT in treatment'
-      form.appendChild(newElement);
-    }else{
-      newElement = document.createElement("input")
-      newElement.setAttribute("name",'programs[][patient_program_id]')
-      newElement.setAttribute("type","hidden");
-      form.appendChild(newElement);
+		newElement = document.createElement("input")
+		newElement.setAttribute("name",'programs[][states][][state]')
+		newElement.setAttribute("type","hidden");
+		//newElement.value = 'Waiting for treatment'
+		newElement.value = 'Symptomatic but NOT in treatment'
+		form.appendChild(newElement);
+	} else {
+		newElement = document.createElement("input")
+		newElement.setAttribute("name",'programs[][patient_program_id]')
+		newElement.setAttribute("type","hidden");
+		form.appendChild(newElement);
 
-      newElement = document.createElement("input")
-      newElement.setAttribute("name",'programs[][program_id]')
-      newElement.setAttribute("type","hidden");
-      newElement.value = <%="#{Program.find_by_name('TB PROGRAM').id}"%>
+		newElement = document.createElement("input")
+		newElement.setAttribute("name",'programs[][program_id]')
+		newElement.setAttribute("type","hidden");
+		newElement.value = <%="#{Program.find_by_name('TB PROGRAM').id}"%>
 
-      newElement = document.createElement("input")
-      newElement.setAttribute("name",'programs[][location_id]')
-      newElement.setAttribute("type","hidden");
-      newElement.value = <%="#{Location.current_health_center.id}"%>
-      form.appendChild(newElement);
+		newElement = document.createElement("input")
+		newElement.setAttribute("name",'programs[][location_id]')
+		newElement.setAttribute("type","hidden");
+		newElement.value = <%="#{Location.current_health_center.id}"%>
+		form.appendChild(newElement);
 
-      newElement = document.createElement("input")
-      newElement.setAttribute("name",'programs[][states][][state]')
-      newElement.setAttribute("type","hidden");
-      newElement.value = 'Symptomatic but NOT in treatment'
-      form.appendChild(newElement);
-  }
+		newElement = document.createElement("input")
+		newElement.setAttribute("name",'programs[][states][][state]')
+		newElement.setAttribute("type","hidden");
+		newElement.value = 'Symptomatic but NOT in treatment'
+		form.appendChild(newElement);
+	}
 }
 
 function tb_number(){
@@ -148,8 +144,6 @@ Check applicability of code below
   <%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
   <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
 
-  <%= text_field_tag :task_name, nil, { :tt_onLoad => "showTaskName()", :optional => "true", :tt_pageStyleClass => "NoControls", :helpText => 'Task'} %>
-
   <%= touch_identifier_tag @patient, "District TB Number", @identifier_value,
         {:id => "tb_district_number",
          :optional => false,
@@ -167,22 +161,38 @@ Check applicability of code below
      :tt_pageStyleClass => "NoKeyboard",
      :helpText => "Weeks of current cough" } %>
 
-  <%= touch_select_tag "TB classification", @patient, options_for_select(@select_options['tb_classification']),
-    {:id => "tb_classification",
-     :tt_pageStyleClass => "NoKeyboard",
-     :helpText => "TB classification" } %>
+	<% if @tb_classification == nil %>
+		<%= touch_select_tag "TB classification", @patient, options_for_select(@select_options['tb_classification']),
+			{	:id => "tb_classification",
+				:tt_pageStyleClass => "NoKeyboard",
+				:helpText => "TB classification" } %>
+	<% else %>
+		<%= touch_hidden_tag "TB classification", @patient, @tb_classification, :id => "tb_classification" %>
+	<% end %> 
 
-  <%= touch_select_tag "EPTB classification", @patient, options_for_select(@select_options['eptb_classification']),
-    {:id => "further_tb_classification",
-     :condition => '$("tb_classification").value == "Extrapulmonary tuberculosis (EPTB)"',
-     :tt_pageStyleClass => "NoKeyboard",
-     :helpText => "EPTB classification" } %>
+	<% if @eptb_classification == nil %>
+		<%= touch_select_tag "EPTB classification", @patient, options_for_select(@select_options['eptb_classification']),
+			{	:id => "further_tb_classification",
+				:condition => '$("tb_classification").value == "Extrapulmonary tuberculosis (EPTB)"',
+				:tt_pageStyleClass => "NoKeyboard",
+				:helpText => "EPTB classification" } %>
+	<% else %>
+		<%= touch_hidden_tag "EPTB classification", @patient, @eptb_classification, :id => "further_tb_classification" %>
+	<% end %> 
 
-  <%= touch_select_tag "TB type", @patient, options_for_select(@select_options['tb_types']),
-    {:id => "tb_type",
-     :tt_pageStyleClass => "NoKeyboard",
-     :helpText => "TB type / TB susceptibility",
-     :tt_OnUnload => "set_TB_program_values()"  } %>
+	<% if @tb_type == nil %>
+		<%= touch_select_tag "TB type", @patient, options_for_select(@select_options['tb_types']),
+			{	:id => "tb_type",
+				:tt_pageStyleClass => "NoKeyboard",
+				:helpText => "TB type / TB susceptibility",
+				:tt_OnUnload => "set_TB_program_values($('tb_type').value)"  } %>
+	<% else %>
+		<%= touch_hidden_tag "TB type", @patient, @tb_type, :id => "tb_type" %>
+		<script>
+			set_TB_program_values($('tb_type').value);
+		</script>
+	<% end %> 
+
 
   <% if !@patient.patient_programs.current.local.map(&:program).map(&:name).include?('TB PROGRAM') %>
       <%= hidden_field_tag("programs[][patient_program_id]", nil) %>
@@ -199,7 +209,7 @@ Check applicability of code below
      :tt_pageStyleClass => "NoKeyboard",
      :helpText => "Patient category" } %>
      
-  <%if @patient.hiv_status.upcase == 'POSITIVE' %> 
+  <%if @patient.hiv_status.upcase == 'POSITIVE' and not @patient.patient_programs.current.local.map(&:program).map(&:name).include?('HIV PROGRAM')%> 
     <%= touch_yes_no_unknown_tag "Patient enrolled in IMB HIV program", @patient, nil,
       {:id => "enroll_patient_in_art",
        :helpText => 'Enroll patient in ART'} %>

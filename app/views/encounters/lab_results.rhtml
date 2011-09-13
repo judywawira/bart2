@@ -93,14 +93,14 @@
         tb_status =  'Confirmed TB NOT on treatment'
       }
       var specimen = $(specimen_field_ids[i]).value
-      results += '<li>' + acc_numbers[specimen] + " Results (Accession number: " + specimen + ") : " + $(result_filed_ids[i]).value  + '</li>'
+      results += '<li><b>' + acc_numbers[specimen] + " Results (Accession number: " + specimen + ") : </b>" + $(result_filed_ids[i]).options[$(result_filed_ids[i]).selectedIndex].text  + '</li>'
     }
     results += '</ul>';
 
-    var display = "<div><span class='title'>TB Status: " + tb_status + "</span></div>";
-    display += "<hr /><br /><div><span class='title'>Sputum results:<br />" + results + "</span></div>";
+    //var display = "<div><span class='title'>TB Status: " + tb_status + "</span></div>";
+    var display = "<div><span class='title' style='font-size:25px;padding-top:7px;'>" + results + "</span></div>";
     $('inputFrame'+tstCurrentPage).innerHTML = '<div id="summary">' + display + '</div>' ;    
-    $("clearButton").className = "button gray navButton";
+    $("clearButton").style.display = 'none';
   }
 
   function resetAttributes() {
@@ -231,7 +231,7 @@ s[i]})" } %>
 
    <%end%>
 
-  <label for='summary'>Summary</label>
+  <label for='summary'>Results Summary</label>
     <%= text_field_tag :summary, nil, { 
         :tt_onLoad => "summary();setAttributes();", 
         :tt_onUnLoad => "resetAttributes();",

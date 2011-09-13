@@ -72,7 +72,7 @@ td , th {
     <% if @show_next_button %>
       buttondiv = document.getElementById('footer');
       buttondiv.innerHTML = "<button id='continue' class = 'button navButton green' style='padding-right:10px' onmousedown='done();'><span>Continue</span></button>"
-      buttondiv.innerHTML += "<button id='print' class='yellow left' onmousedown='printLabel();'><span>Print</span></button>"
+      buttondiv.innerHTML += "<button id='print' class='yellow left' style='float:right' onmousedown='printLabel();'><span>Print</span></button>"
     <%end%> 
   }
 

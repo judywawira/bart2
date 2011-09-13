@@ -5,12 +5,13 @@
     var number_of_selected_test = 0;
 
     function showLabels(){
-        //var ordersArray = tstPageValues[1].split(";")
-        var ordersArray = val_arr
+		//alert($('lab_orders').value);
+        var ordersArray = tstPageValues[1].split(";")
+        //var ordersArray = val_arr
 
         var displayText = ""
         for(var i=0;i<ordersArray.length;i++){
-        displayText += drawLabel(ordersArray[i])
+	        displayText += drawLabel(ordersArray[i])
         }
 
         $('tt_page_summary_').innerHTML = '<div id="summary">' + displayText + '</div>' ;
@@ -36,7 +37,7 @@
         $('lab_orders').setAttribute('ajaxURL', url);
     }
 
-    function updateInfoBar(element){
+   /* function updateInfoBar(element){
         var val = unescape(element.innerHTML)
         var idx = val_arr.indexOf(val);
         if (idx == -1){
@@ -46,11 +47,7 @@
         }
         //tstInputTarget.value = ""
         $('final_tests').value = val_arr.join(';');
-    }
-
-    function showTaskName(){
-        $('inputFrame'+tstCurrentPage).innerHTML = '<div id="summary"><div><span class="title" style="font-size:40px;">Next Task: Lab Order</span></div></div>' 
-    }
+    }*/
 
     function colourfy(){
         alert('AA');
@@ -72,15 +69,15 @@
         listSuggestions(tstCurrentPage);
     }
   
-    function updateNextFinish(){
+    /*function updateNextFinish(){
         tstTimerFunctionCall = null;
         number_of_selected_test = tstInputTarget.value.split(';').length;
 
-        if (tstCurrentPage == 1 || tstCurrentPage == 2){
+        if (tstCurrentPage == 0 || tstCurrentPage == 1){
             if (tstInputTarget.value == ''){
                 //$('nextButton').innerHTML = '<span>Finish</span>';
                 $('nextButton').innerHTML = '<span>Next</span>';
-                if(number_of_selected_test < 2 && tstCurrentPage == 2){
+                if(number_of_selected_test < 2 && tstCurrentPage == 1){
                     $('nextButton').setAttribute("onmousedown","showMessage('Please select 2 or more tests');");
                 }
                 else{
@@ -90,7 +87,7 @@
             }
             else{
                 $('nextButton').innerHTML = '<span>Next</span>';
-                if(number_of_selected_test < 2 && tstCurrentPage == 2){
+                if(number_of_selected_test < 2 && tstCurrentPage == 1){
                     $('nextButton').setAttribute("onmousedown","showMessage('Please select 2 or more tests');");
                 }
                 else{
@@ -98,6 +95,14 @@
                 }
             }
             setTimeout(updateNextFinish, 500);
+        }
+    }*/
+
+    function validateOptions(){
+        number_of_selected_test = tstInputTarget.value.split(';').length;
+        if(number_of_selected_test < 2){
+            showMessage('Please select 2 or more tests');
+			gotoPage(tstCurrentPage - 1, false);
         }
     }
 
@@ -134,36 +139,31 @@
 </style>
 <form id='label_specimens' action="/encounters/create" method='post'>
     
-  <%= hidden_field_tag "encounter[encounter_type_name]", "LAB ORDERS" %>
-  <%= hidden_field_tag "encounter[patient_id]", @patient.id %>
-  <%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
-  <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
+	<%= hidden_field_tag "encounter[encounter_type_name]", "LAB ORDERS" %>
+	<%= hidden_field_tag "encounter[patient_id]", @patient.id %>
+	<%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
+	<%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
 
-  <%= text_field_tag :task_name, nil, { :tt_onLoad => "showTaskName()", :optional => "true", :tt_pageStyleClass => "NoControls", :helpText => 'Task'} %>
+	<%# select_tag "main_tests", options_for_select(@select_options['lab_orders'].sort.collect{|k,v| k}.unshift(" ")), %>
 
-<%# select_tag "main_tests", options_for_select(@select_options['lab_orders'].sort.collect{|k,v| k}.unshift(" ")), %>
+	<%= select_tag "main_tests", options_for_select(["Sputum-AAFB", "Sputum-Culture"].unshift(" ")), 
+		{	:helptext => 'Main tests', 
+			:id => 'main_tests',
+			:tt_onUnLoad => 'updateLaborderUrl($("main_tests").value);'}%>
 
-  <%= select_tag "main_tests", options_for_select(["Sputum-AAFB", "Sputum-Culture"].unshift(" ")), 
-    {:helptext => 'Main tests', 
-      :id => 'main_tests',
-      :tt_onLoad => "updateNextFinish();",
-      :optional => true,
-     :tt_onUnLoad => 'updateLaborderUrl($("main_tests").value);'}%>
+	<%= touch_select_tag "TESTS ORDERED", @patient, options_for_select([]),
+		{	:id => "lab_orders",
+			:tt_onLoad => "$('clearButton').style.display='block'", 
+			:tt_onUnLoad => 'validateOptions();',
+			:multiple => true,
+			:helpText => "Select test" } %>
 
-  <%= select_tag "lab_orders", options_for_select([]),
-    {:id => "lab_orders",
-     #:tt_onLoad => '$("infoBar"+tstCurrentPage).innerHTML = val_arr.toString();setTimeout("updateLabOptions()",500);updateNextFinish();',
-     :tt_onLoad => 'setTimeout("updateLabOptions()",500);updateNextFinish();',
-     :ajaxURL => '',
-     :tt_onUnLoad => "",
-     :multiple => true,
-     :helpText => "Select test" } %>
 
-     <%= touch_hidden_tag "TESTS ORDERED", @patient, nil, :id => "final_tests", :multiple => true %>
+	<label for='showSummary'>Summary </label>
+	<%= text_field_tag :showSummary, nil, 
+		{	:tt_onLoad => "showLabels();$('clearButton').style.display='none'", 
+			:optional => "true", :tt_pageStyleClass => "NoControls" } %>
 
-  <label for='showSummary'>Summary </label>
-  <%= text_field_tag :showSummary, nil, { :tt_onLoad => "showLabels();$('clearButton').style.display='none'", :optional => "true", :tt_pageStyleClass => "NoControls" } %>
-
-  <%= submit_tag "Finish" %>
+	<%= submit_tag "Finish" %>
 
 </form>

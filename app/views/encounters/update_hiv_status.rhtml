@@ -37,9 +37,6 @@
     return showNegativeTestReminder
   }
 
-  function showTaskName(){
-    $('inputFrame'+tstCurrentPage).innerHTML = '<div id="summary"><div><span class="title" style="font-size:40px;">Next Task: Update HIV Status</span></div></div>' 
-  }
 </script>
 
 <style>
@@ -64,8 +61,6 @@
   Skip logic
   -->
 
- <%= text_field_tag :task_name, nil, { :tt_onLoad => "showTaskName()", :optional => "true", :tt_pageStyleClass => "NoControls", :helpText => 'Task'} %>
-
  <%= touch_select_tag "HIV STATUS", @patient, options_for_select(@select_options['hiv_status']),
     {:id => "hiv_status",
      :tt_pageStyleClass => "NoKeyboard",
@@ -85,7 +80,7 @@
       :tt_onUnload=> "updateTestDate();"
   } %>
 
-  <%= text_field_tag :summary, nil, { :tt_onLoad => '$("hivTestReminder").style.display = "block";$("nextButton").innerHTML = "<span>Finish</span>";', :optional => "true", :tt_pageStyleClass => "NoControls", :helpText => 'HTC Reminder', :condition => '(updateTestDate() == true && $("hiv_status").value == "NEGATIVE") || ($("hiv_status").value == "UNKNOWN");'} %>
+  <%= text_field_tag :summary, nil, { :tt_onLoad => '$("hivTestReminder").style.display = "block";$("nextButton").innerHTML = "<span>Finish</span>";', :optional => "true", :tt_pageStyleClass => "NoControls", :helpText => 'HTC Reminder', :condition => '(updateTestDate() == true && $("hiv_status").value == "Negative") || ($("hiv_status").value == "Unknown");'} %>
 
   <%= touch_location_tag "LOCATION OF HIV TEST", @patient, nil,
     {:id => "location_of_hiv_test",

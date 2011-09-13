@@ -10,10 +10,11 @@
   %>
 
 <script>
+ 
   var tt_cancel_destination = "/patients/show/<%= @patient.patient_id %>"
   
   function new_relationship() {
-    var current = '/encounters/new/hiv_reception?patient_id=<%= @patient.patient_id %>';
+    var current = '/encounters/new/tb_reception?patient_id=<%= @patient.patient_id %>';
     window.location = "/relationships/search?patient_id=<%= @patient.patient_id %>&return_to=" + escape(current) + "&guardian_added=true"
   }
   
@@ -99,11 +100,7 @@
         <%= hidden_field_tag("observations[][obs_datetime]", DateTime.now()) %>
     <% end %>
   <% else %>
-    <%= hidden_field_tag("observations[][value_text]", "Yes") %>
-    <%= hidden_field_tag("observations[][value_coded_or_text]", nil) %>
-    <%= hidden_field_tag("observations[][concept_name]", "GUARDIAN PRESENT") %>
-    <%= hidden_field_tag("observations[][patient_id]", @patient.id) %>
-    <%= hidden_field_tag("observations[][obs_datetime]", DateTime.now()) %>
+    <%= touch_hidden_tag("GUARDIAN PRESENT", @patient.id, "Yes", {:id=>"guardian_present"}) %>
   <% end %>
   <% session[:guardian_added] = nil %>
 
@@ -117,16 +114,16 @@
     <%= hidden_field_tag("observations[][patient_id]", @patient.id) %>
     <%= hidden_field_tag("observations[][obs_datetime]", DateTime.now()) %>  
 
-  <% if ask_sms_for_TB_therapy and phone_number_available %>
-    <%= select_tag("person[agrees_phone_text_for_TB_therapy]", options_for_select([" ", "Yes", "No", "Unknown"]),
+  <%# if ask_sms_for_TB_therapy and phone_number_available %>
+    <#%= select_tag("person[agrees_phone_text_for_TB_therapy]", options_for_select([" ", "Yes", "No", "Unknown"]),
       :helpText => "Can we send you an SMS for follow-up?") %>
-  <% end %>
+  <%# end %>
 
-  <% if ask_visit_home_for_TB_therapy and not visit_home_for_tb_therapy.upcase == 'UNKNOWN'%>
-    <%= select_tag("person[agrees_to_be_visited_for_TB_therapy]", options_for_select([" ", "Yes", "No", "Unknown"]),
+  <%# if ask_visit_home_for_TB_therapy and not visit_home_for_tb_therapy.upcase == 'UNKNOWN'%>
+    <%#= select_tag("person[agrees_to_be_visited_for_TB_therapy]", options_for_select([" ", "Yes", "No", "Unknown"]),
       :helpText =>"Can we visit you at home for follow-up?", 
       :tt_onLoad => 'seen(tstCurrentPage);') %>
-  <% end %>
+  <%# end %>
 
   <%if not (Location.current_health_center.name.match(/Martin Preuss Centre/i) or Location.current_health_center.name.match(/Lighthouse/i))%>
   <label for='clinic_visit_type'>Reason for patient's clinic visit</label>

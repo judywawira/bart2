@@ -78,10 +78,11 @@ class ApplicationController < ActionController::Base
        (r.concept_names.typed("SHORT").first ||
         r.concept_names.typed("FULLY_SPECIFIED").first).name]
     }
-
-    options.collect{ |opt|
+	
+    suffixed_options = options.collect{ |opt|
       opt_reg = Regimen.find(:all,
                              :select => 'regimen_index',
+							 :order => 'regimen_index',
                              :conditions => ['concept_id = ?', opt[0]]
                             ).uniq.first
       if age >= 15
@@ -92,11 +93,12 @@ class ApplicationController < ActionController::Base
 
       #[opt[0], "#{opt_reg.regimen_index}#{suffix} - #{opt[1]}"]
 		if opt_reg.regimen_index > -1
-      		["#{opt_reg.regimen_index}#{suffix} - #{opt[1]}", opt[0]]
+      		["#{opt_reg.regimen_index}#{suffix} - #{opt[1]}", opt[0], opt_reg.regimen_index.to_i]
 		else
-      		["#{opt[1]}", opt[0]]
+      		["#{opt[1]}", opt[0], opt_reg.regimen_index.to_i]
 		end
-    }.sort_by{|opt| opt[1]}
+    }.sort_by{|opt| opt[2]}
+
   end
 
 private

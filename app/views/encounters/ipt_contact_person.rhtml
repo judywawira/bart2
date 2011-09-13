@@ -1,4 +1,4 @@
-<script type="text/javascript" language="javascript">
+<script>
 		tt_cancel_show = "/patients/show/<%= @patient.id %>";
 		tt_cancel_destination = "/patients/show/<%= @patient.id %>";
 
@@ -28,10 +28,6 @@ function changeNextButton(text){
     $('nextButton').innerHTML = "<span>" + text + "</span>";
 }
 
- function showTaskName(){
-    $('inputFrame'+tstCurrentPage).innerHTML = '<div id="summary"><div><span class="title" style="font-size:40px;">Next Task: IPT</span></div></div>' 
-  }
-
 </script>
 <%if @ipt_contacts.blank?%>
   <% form_tag :controller => "people", :action => "new_tb_contact_person", :source => "create_ipt", :patient_id => @patient.id  do |f| %>
@@ -44,8 +40,6 @@ function changeNextButton(text){
 	<%= hidden_field_tag "encounter[patient_id]", @patient.id %>
 	<%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
   <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
-
-  <%= text_field_tag :task_name, nil, { :tt_onLoad => "showTaskName()", :optional => "true", :tt_pageStyleClass => "NoControls", :helpText => 'Task'} %>
 
     <label for="ipt_contact">Select the IPT contact from the following</label>
     <select name="ipt_contact" id="ipt_contact">

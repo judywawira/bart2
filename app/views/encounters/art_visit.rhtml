@@ -28,7 +28,7 @@
 
 <script>
   var tt_cancel_destination = "/patients/show/<%= @patient.patient_id %>"
-
+	
   function getNumberOfSymptoms(){
     var options = $('symptoms').options;
     var symptoms = 0;
@@ -130,7 +130,7 @@
       <%= hidden_field_tag("observations[][concept_name]", "TB STATUS") %>
       <%= hidden_field_tag("observations[][patient_id]", @patient.id) %>
       <%= hidden_field_tag("observations[][obs_datetime]", DateTime.now()) %>
-      <%= hidden_field_tag("observations[][value_coded]", Concept.find_by_name("#{@tb_programs_state}").id) %>
+      <%= hidden_field_tag("observations[][value_coded]", ConceptName.find_by_name("#{@patient.tb_status}").concept_id) %>
     <% end %>
 
   <%if @patient.child_bearing_female?%>
@@ -164,12 +164,17 @@
   <% if User.current_user.user_roles.map{|r|r.role}.include?('Nurse') and reception.match(/PATIENT PRESENT FOR CONSULTATION: YES/i) %>
     <%= touch_yes_no_unknown_tag "REFER TO ART CLINICIAN", @patient, nil,
       {:optional => false,
+      :id => "refer_to_clinician",
       :helpText => "Refer to clinician?" } %>
   <%else%>
-    <%= hidden_field_tag "observations[][value_coded_or_text]",'NO' %>
-    <%= hidden_field_tag "observations[][concept_name]",'REFER TO ART CLINICIAN' %>
-    <%= hidden_field_tag "observations[][patient_id]",@patient.id %>
+    <%= touch_hidden_tag "REFER TO ART CLINICIAN", @patient, "NO", :id => "refer_to_clinician" %>
   <%end%>
+
+  <%= touch_yes_no_tag "Allergic to sulphur", @patient, nil,
+		{	:id => "allergic_to_sulphur",
+			:condition => "$('refer_to_clinician').value == 'NO'" ,
+			:helpText => "Is patient allergic to sulphur" } %>
+
 
   <%= touch_text_area_tag("CLINICAL NOTES CONSTRUCT", @patient, nil,
     {:optional => true,:helpText => "Clinical notes (optional)"}, time=DateTime.now()) %>

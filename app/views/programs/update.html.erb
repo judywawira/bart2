@@ -103,13 +103,13 @@
        :field_type => 'alpha',
        :helpText => "Transfer out to location",
        :ajaxURL => '/programs/locations?q=',
-       :condition => "current_state_input_box.value == 'PATIENT TRANSFERRED OUT'",
+       :condition => "current_state_input_box.value.toUpperCase() == 'PATIENT TRANSFERRED OUT'",
        :allowFreeText => true } %>
 
   <%= touch_yes_no_unknown_tag "TRANSFER WITHIN RESPONSIBILITY", @patient, nil,
       {:id => "transfer_within_responsibility",
        :optional => false,
-       :condition => "current_state_input_box.value == 'PATIENT TRANSFERRED OUT'",
+       :condition => "current_state_input_box.value.toUpperCase() == 'PATIENT TRANSFERRED OUT'",
        :helpText => "Transfer within responsibility (e.g. District)" } %>
 
 

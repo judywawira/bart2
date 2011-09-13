@@ -31,7 +31,11 @@
     height: 18em;
   }
     
-  .tt_controls_select_regimen .abcKeyboard {
+  .tt_controls_select_art_regimen .abcKeyboard {
+    display: none;
+  }
+
+  .tt_controls_select_tb_regimen .abcKeyboard {
     display: none;
   }
   
@@ -49,6 +53,8 @@
   var current_regimen_names_for_programs = <%= @current_regimen_names_for_programs.to_json -%>;
   var reason_for_art = "<%= @patient.reason_for_art_eligibility %>";
   var prescribeTBDrugs = "<%= @prescribe_tb_drugs %>";
+  var prescribeARTDrugs = "<%= @prescribe_art_drugs %>";
+  var artVisit = "<%= @art_visit %>";
   var regimen_id = null; 
   var tb_regimen_id = null; 
 
@@ -147,12 +153,32 @@
   }
 
   function hasReasonForART() {
-    if(reason_for_art.match(/UNKNOWN/i) || reason_for_art.length == 0)
-      return false
+    if(reason_for_art.match(/UNKNOWN/i) || reason_for_art.length == 0) {
+      return false;
+	}
 
-    return true
+    return true;
   }
 
+  function hasARTVisit() {
+	returnValue = false;  
+
+	if (artVisit == "true") {
+		returnValue = true;	
+	} else {
+		returnValue = false;
+	}
+
+	return returnValue;
+  }
+
+  function prescribeAntiretroviralDrugs() {
+	var prescribe = false;    
+	if(prescribeARTDrugs == 'true'){
+      prescribe = true;
+	}
+	return prescribe;
+  }
   
   function isRegisteredForTB() {
 	var isRegistered = false;    
@@ -211,9 +237,9 @@
      durations = ['1 week','2 weeks','1 month','2 months','3 months','4 months','5 months','6 months']
      durations.each do |duration|
        if duration.match(/week/i)
-        days = ((duration.to_i)*7)
+        days = (((duration.to_i)*7))
        elsif duration.match(/month/i)
-        days = ((duration.to_i)*30)
+        days = (((duration.to_i)* 30))
        end
        optionsString += "<option value = '" + days.to_s + "'>" + duration + "</option>"
      end
@@ -235,7 +261,7 @@
   <%= touch_yes_no_tag "PRESCRIBE ARVS", @patient, nil,
       {:optional => false,
        :id => 'prescribe_arvs',
-       :condition => 'hasReasonForART() == true',
+       :condition => 'hasReasonForART() == true && prescribeAntiretroviralDrugs() == true',
        :helpText => "Prescribe ARVS" } %>
 
   <%= select_tag :continue_existing_regimen, options_for_select([['',''],['YES','YES'],['NO','NO']], ''), {
@@ -270,43 +296,101 @@
 		:allowFreeText => "true",
 		:tt_pageStyleClass => "NumbersOnlyWithDecimal"}%>
 
-  <% optionsString = "<option>" "" "</option>"
-     durations = ['1 week','2 weeks','1 month','2 months','3 months','4 months','5 months','6 months']
-     durations.each do |duration|
-       if duration.match(/week/i)
-        days = ((duration.to_i)*7)
-       elsif duration.match(/month/i)
-        days = ((duration.to_i)*30)
-       end
-       optionsString += "<option value = '" + days.to_s + "'>" + duration + "</option>"
-     end
-  %>
-  <%= select_tag :duration, optionsString, { 
-	:condition => '$("prescribe_arvs").value == "YES"',	
-	:helpText => 'Duration' } %> 
-
 	<!-- CPT & IPT-->
-  <%= touch_yes_no_tag "Prescribe cotramoxazole", @patient, nil,
-      {:optional => false,
-       :id => 'cpt_given',
-       :helpText => "Prescribe CPT" } %>
+  <% if @alergic_to_suphur == true %>
+    <%= touch_hidden_tag "Prescribe cotramoxazole", @patient, "NO", :id => "cpt_given" %>
+  <% else %>
+    <%= touch_yes_no_tag "Prescribe cotramoxazole", @patient, nil,
+        {:optional => false,
+         :id => 'cpt_given',
+		:condition => 'prescribeAntiretroviralDrugs() == true',
+         :helpText => "Prescribe CPT" } %>
+  <% end %>
 
-  <% if @patient.gender == 'F' && @patient.person.age >= 14 %>
+  <% if @patient.gender == 'Female' && @patient.person.age >= 14 %>
 		<%= touch_yes_no_tag "ISONIAZID", @patient, nil,
 		    {:optional => false,
 		     :id => 'ipt_given',
+			:condition => 'prescribeAntiretroviralDrugs()',
 		     :helpText => "Prescribe IPT" } %>
 	<%else%>
-		<%= hidden_field_tag(:ipt_given, "") %>
+		<%= touch_hidden_tag "ISONIAZID", @patient, "", :id => "ipt_given" %>
   <%end%>
-  <%= select_tag :cpt_ipt_duration, optionsString, { 
-	:condition => '$("cpt_given").value == "YES" || $("ipt_given").value == "YES" ',	
+
+  <%= select_tag :duration, optionsString, { 
+	:condition => '$("prescribe_arvs").value == "YES" || $("cpt_given").value == "YES" || $("ipt_given").value == "YES"',	
 	:helpText => 'Duration' } %> 
 
+
   <% if @patient.person.age >= 14 %>
+	
 	  <%= touch_numeric_tag "CONDOMS", @patient, nil,
-		{:optional => false,
-		 :helpText => "Number of Condoms given" } %>
+		{	:optional => false,
+			:condition => 'hasARTVisit() == true;',
+			:helpText => "Number of Condoms given" 
+		} %>
+
  <% end %>
+ 
+ <% initial_date = "#{session[:datetime].strftime('%Y-%m-%d')}" rescue "#{(Date.today).strftime('%Y-%m-%d')}" %>
   
+<%
+    transfer_location_id = nil
+    transfer_within_responsibility_value = 'Unknown'
+    current_state_value = nil
+    
+    program_workflow = ProgramWorkflow.all(:conditions => ['program_id = ?', Program.find_by_name("TB PROGRAM").id], :include => :concept)
+    program_workflow_id = program_workflow.first.program_workflow_id
+    
+    states = ProgramWorkflowState.all(:conditions => ['program_workflow_id = ?', program_workflow_id], :include => :concept)
+    
+    states.each do |state|
+          concept = state.concept
+          if (concept.fullname == "Patient transferred out")
+             current_state_value = state.program_workflow_state_id
+             break
+          end
+    end
+    
+    
+	if !@tb_visit_encounter.blank? 
+		for obs in @tb_encounter.observations do 
+			if obs.concept_id == ConceptName.find_by_name("Transfer to").concept_id 
+				transfer_location_id = "#{obs.to_s(["short", "order"]).to_s.split(":")[1].to_i}" 
+			elsif obs.concept_id == ConceptName.find_by_name("Transfer within responsibility").concept_id 
+				transfer_within_responsibility_value = "#{obs.to_s(["short", "order"]).to_s.split(":")[1].to_i}" 
+			end
+		end 
+	end 
+
+	program = PatientProgram.find(:all,:conditions =>["voided = 0 AND patient_id = ?
+		AND program_id = ? AND location_id = ?", @patient.id ,
+		Program.find_by_name("TB PROGRAM").id, Location.current_health_center.id]).last rescue nil
+  
+  
+    if program != nil 
+       if (program.date_completed.blank?) 
+             if !transfer_location_id.blank? %>
+                <%= hidden_field_tag "transfer_data[]transfer_out_location_id", transfer_location_id %>
+                <%= hidden_field_tag "transfer_data[]current_state", "#{current_state_value}" %>           
+                <%= hidden_field_tag "transfer_data[]current_date", "#{initial_date}" %>
+      
+                <%= hidden_field_tag "transfer_data[]patient_program_id", "#{program.id}" %>
+
+                <%= hidden_field_tag "transfer_data[]patient_id", @patient.id %>
+                <%= hidden_field_tag "transfer_data[]location", Location.current_health_center.id %>
+
+                <%= hidden_field_tag "transfer_data[]encounter[provider_id]", session[:user_id] %>
+                <%= hidden_field_tag "transfer_data[]encounter[encounter_type_name]", "TRANSFER OUT" %>
+                <%= hidden_field_tag "transfer_data[]encounter[patient_id]", @patient.id %>    
+                <%= hidden_field_tag "transfer_data[]encounter[encounter_datetime]", DateTime.now() %>
+                     
+
+                <%= hidden_field_tag "transfer_data[]observations[][patient_id]", @patient.id  %>  
+                <%= hidden_field_tag "transfer_data[]observations[][concept_name]", "TRANSFER WITHIN RESPONSIBILITY" %>
+                <%= hidden_field_tag "transfer_data[]observations[][obs_datetime]", DateTime.now() %>
+                <%= hidden_field_tag "transfer_data[]observations[][value_coded_or_text]", "#{transfer_within_responsibility_value}"%>
+            <%end
+        end
+  end%>
 </form>

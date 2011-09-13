@@ -7,7 +7,7 @@ class PatientsController < ApplicationController
     @encounters    = @patient.encounters.find_by_date(session_date)
     @prescriptions = @patient.orders.unfinished.prescriptions.all
     @programs      = @patient.patient_programs.all
-    @alerts        = @patient.alerts
+    @alerts        = @patient.alerts(session_date)
     # This code is pretty hacky at the moment
     @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id})
     @restricted.each do |restriction|    
@@ -465,7 +465,7 @@ rm /tmp/output-#{session[:user_id]}.pdf
     @encounters    = @patient.encounters.find_by_date(session_date)
     @prescriptions = @patient.orders.unfinished.prescriptions.all
     @programs      = @patient.patient_programs.all
-    @alerts        = @patient.alerts
+    @alerts        = @patient.alerts(session_date)
     # This code is pretty hacky at the moment
     @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id})
     @restricted.each do |restriction|
@@ -481,11 +481,11 @@ rm /tmp/output-#{session[:user_id]}.pdf
 
   def overview
     session[:mastercard_ids] = []
-    session_date = session[:datetime].to_date rescue Date.today
-    @encounters = @patient.encounters.find_by_date(session_date)
+    session_date   = session[:datetime].to_date rescue Date.today
+    @encounters    = @patient.encounters.find_by_date(session_date)
     @prescriptions = @patient.orders.unfinished.prescriptions.all
-    @programs = @patient.patient_programs.all
-    @alerts = @patient.alerts
+    @programs      = @patient.patient_programs.all
+    @alerts        = @patient.alerts(session_date)
     # This code is pretty hacky at the moment
     @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
     @restricted.each do |restriction|
@@ -499,11 +499,11 @@ rm /tmp/output-#{session[:user_id]}.pdf
 
   def visit_history
     session[:mastercard_ids] = []
-    session_date = session[:datetime].to_date rescue Date.today
-    @encounters = @patient.encounters.find_by_date(session_date)
+    session_date   = session[:datetime].to_date rescue Date.today
+    @encounters    = @patient.encounters.find_by_date(session_date)
     @prescriptions = @patient.orders.unfinished.prescriptions.all
-    @programs = @patient.patient_programs.all
-    @alerts = @patient.alerts
+    @programs      = @patient.patient_programs.all
+    @alerts        = @patient.alerts(session_date)
     # This code is pretty hacky at the moment
     @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
     @restricted.each do |restriction|

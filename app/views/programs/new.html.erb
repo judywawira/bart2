@@ -49,9 +49,8 @@
 
 <form id='program' action="/programs/create" method='post'> 
   <%= hidden_field_tag :patient_id, @patient.id %>
-concept.concept_names.typed("SHORT").first
   <%= select_tag 'program_id', options_for_select(
-    Program.all.inject({}){|result, element| result[(element.concept.concept_names.typed("SHORT").first.name rescue element.concept.concept_names.first.name)] = element.program_id; result }, nil), 
+    Program.all.inject({}){|result, element| result[(element.concept.concept_names.typed("SHORT").first.name rescue element.concept.concept_names.first.name)] = element.program_id; result }.sort, nil), 
     {:helpText => "Select Program",
      :validationJS =>"selectedProgram()",
      :validationMessage => "Patient already enrolled in program" } %> 
@@ -90,13 +89,13 @@ concept.concept_names.typed("SHORT").first
        :max => "#{(Date.today).strftime('%Y-%m-%d')}",
        :tt_pageStyleClass => "Date DatesOnly"} %>     
 <!--
-  <%= select_tag 'current_state', params[:current_state],     
-    {:id => 'current_state', 
-     :field_type => 'alpha', 
+  <%= select_tag 'current_state', params[:current_state],
+    {:id => 'current_state',
+     :field_type => 'alpha',
      :helpText => "Current state",
      :tt_onLoad => "set_workflow_for_states();",
-     :ajaxURL => "", 
-     :allowFreeText => false } %> 
+     :ajaxURL => "",
+     :allowFreeText => false } %>
 
   <%= text_field_tag 'current_date', params[:current_date] || (Time.now).year, 
       {:id => 'current_date',

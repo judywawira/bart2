@@ -83,9 +83,9 @@ class ProgramsController < ApplicationController
     else
        @states = ProgramWorkflowState.all(:conditions => ['program_workflow_id = ?', params[:workflow]], :include => :concept)
     end
-
+    
     @names = @states.map{|state|
-      name = state.concept.fullname rescue nil
+      name = state.concept.concept_names.typed("SHORT").first.name rescue state.concept.fullname
       next if name.blank? 
       "<li value='#{state.id}'>#{name}</li>" unless name == params[:current_state]
     }
