@@ -20,26 +20,6 @@ class Person
         self.remote_demographics_server.query(known_demographics)
       end # def find_remote
 
-      # params = {
-      #   'occupation'        => params[:occupation],
-      #   'age_estimate'      => params[:patient_age][:age_estimate],
-      #   'cell_phone_number' => params[:cell_phone][:identifier],
-      #   'gender'            => params[:patient][:gender],
-      #   'birth_day'         => params[:patient_day],
-      #   'birth_month'       => params[:patient_month],
-      #   'birth_year'        => params[:patient_year],
-      #   'addresses'         => {
-      #     'address1'        => params[:p_address][:identifier],
-      #     'address2'        => params[:p_address]['identifier'],
-      #     'city_village'    => params[:patientaddress][:city_village],
-      #     'county_district' => params[:birthplace]
-      #   },
-      #   'names'             => {
-      #     'family_name2'    => 'Unknown',
-      #     'family_name'     => params[:patient_name][:family_name],
-      #     'given_name'      => params[:patient_name][:given_name]
-      #   }
-      # }
       def create_from_remote(params)
         address_params  = params['addresses']
         names_params    = params['names']
@@ -63,21 +43,12 @@ class Person
         person.names.create names_params
         person.addresses.create address_params
 
-        person.person_attributes.create(
-          :person_attribute_type_id => PersonAttributeType['Occupation'].person_attribute_type_id,
-          :value => params["occupation"]) unless params['occupation'].blank? rescue nil
-
-        person.person_attributes.create(
-          :person_attribute_type_id => PersonAttributeType['Cell Phone Number'].person_attribute_type_id,
-          :value => params['cell_phone_number']) unless params['cell_phone_number'].blank? rescue nil
-
-        person.person_attributes.create(
-          :person_attribute_type_id => PersonAttributeType['Office Phone Number'].person_attribute_type_id,
-          :value => params['office_phone_number']) unless params['office_phone_number'].blank? rescue nil
-
-        person.person_attributes.create(
-          :person_attribute_type_id => PersonAttributeType['Home Phone Number'].person_attribute_type_id,
-          :value => params['home_phone_number']) unless params['home_phone_number'].blank? rescue nil
+        { 'Occupation'          => 'occupation',
+          'Cell Phone Number'   => 'cell_phone_number',
+          'Office Phone Number' => 'office_phone_number',
+          'Home Phone Number'   => 'home_phone_number'}.each_pair do |prop, attr|
+          person.set_attribute(prop, params[attr]) unless params[attr].blank? rescue nil
+        end
 
 #         person.person_attributes.create(
 #           :person_attribute_type_id => PersonAttributeType.find_by_name("Landmark Or Plot Number").person_attribute_type_id,

@@ -23,10 +23,7 @@ class RemoteDemographicsServer
     else
       raise ArgumentError, 'Argument to RemoteDemographicsServer#query must be an ID (String) or a valid attribute Hash'
     end
-  rescue RestClient::ResourceNotFound => e
-    Rails.logger.error "FAILED fetching demographics data from remote: #{e}"
-    nil
-  rescue RestClient::InternalServerError => e
+  rescue => e
     Rails.logger.error "FAILED fetching demographics data from remote: #{e}"
     nil
   end

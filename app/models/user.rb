@@ -112,4 +112,8 @@ class User < ActiveRecord::Base
     prop.save
   end
 
+  def self.current_user_id
+    self.current_user.id
+  end
+
 end

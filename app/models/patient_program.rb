@@ -1,17 +1,29 @@
 class PatientProgram < ActiveRecord::Base
-  set_table_name "patient_program"
-  set_primary_key "patient_program_id"
+  set_table_name 'patient_program'
+  set_primary_key 'patient_program_id'
+
   include Openmrs
-  belongs_to :patient, :conditions => {:voided => 0}
-  belongs_to :program, :conditions => {:retired => 0}
-  belongs_to :location, :conditions => {:retired => 0}
-  has_many :patient_states, :class_name => 'PatientState', :conditions => {:voided => 0}, :dependent => :destroy
 
-  named_scope :current, :conditions => ['date_enrolled < NOW() AND (date_completed IS NULL OR date_completed > NOW())']
-  named_scope :local, lambda{|| {:conditions => ['location_id IN (?)',  Location.current_health_center.children.map{|l|l.id} + [Location.current_health_center.id] ]}}
+  belongs_to :patient,
+      :conditions => {:voided => 0}
+  belongs_to :program,
+      :conditions => {:retired => 0}
+  belongs_to :location,
+      :conditions => {:retired => 0}
+  has_many :patient_states,
+      :class_name => 'PatientState',
+      :conditions => {:voided => 0},
+      :dependent  => :destroy
 
-  named_scope :in_programs, lambda{|names| names.blank? ? {} : {:include => :program, :conditions => ['program.name IN (?)', Array(names)]}}
-  named_scope :not_completed, lambda{|tags| tags.blank? ? {} : {:conditions => ['date_completed = NULL']}}
+  named_scope :current,
+      :conditions => ['date_enrolled < NOW() AND (date_completed IS NULL OR date_completed > NOW())']
+  named_scope :local,
+      lambda{|| {:conditions => ['location_id IN (?)',  Location.current_health_center.children.map{|l|l.id} + [Location.current_health_center.id] ]}}
+
+  named_scope :in_programs,
+      lambda{|*names| names.blank? ? {} : {:include => :program, :conditions => ['program.name IN (?)', names.flatten]}}
+  named_scope :not_completed,
+      lambda{|*tags| tags.blank? ? {} : {:conditions => ['date_completed = NULL']}}
 
   validates_presence_of :date_enrolled, :program_id
 

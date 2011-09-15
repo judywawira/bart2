@@ -296,9 +296,9 @@ class PatientsController < ApplicationController
 
   def mastercard_printable
     #the parameter are used to re-construct the url when the mastercard is called from a Data cleaning report
-    @quarter = params[:quarter]
+    @quarter          = params[:quarter]
     @arv_start_number = params[:arv_start_number]
-    @arv_end_number = params[:arv_end_number]
+    @arv_end_number   = params[:arv_end_number]
     @show_mastercard_counter = false
 
     if params[:patient_id].blank?
@@ -318,8 +318,8 @@ class PatientsController < ApplicationController
 
       end
       @patient_id = session[:mastercard_ids][session[:mastercard_counter]]
-      @data_demo = Mastercard.demographics(Patient.find(@patient_id))
-      @visits = Mastercard.visits(Patient.find(@patient_id))
+      @data_demo  = Mastercard.demographics(Patient.find(@patient_id))
+      @visits     = Mastercard.visits(Patient.find(@patient_id))
 
       # elsif session[:mastercard_ids].length.to_i != 0
       #  @patient_id = params[:patient_id]
@@ -327,17 +327,17 @@ class PatientsController < ApplicationController
       #  @visits = Mastercard.visits(Patient.find(@patient_id))
     else
       @patient_id = params[:patient_id]
-      @data_demo = Mastercard.demographics(Patient.find(@patient_id))
-      @visits = Mastercard.visits(Patient.find(@patient_id))
+      @data_demo  = Mastercard.demographics(Patient.find(@patient_id))
+      @visits     = Mastercard.visits(Patient.find(@patient_id))
     end
     render :layout => false
   end
 
   def visit
     @patient_id = params[:patient_id] 
-    @date = params[:date].to_date
-    @patient = Patient.find(@patient_id)
-    @visits = Mastercard.visits(@patient,@date)
+    @date       = params[:date].to_date
+    @patient    = Patient.find(@patient_id)
+    @visits     = Mastercard.visits(@patient,@date)
     render :layout => 'menu'
   end
 
@@ -357,13 +357,13 @@ class PatientsController < ApplicationController
   def mastercard_modify
     if request.method == :get
       @patient_id = params[:id]
-      @patient = Patient.find(params[:id])
-      @edit_page = Patient.edit_mastercard_attribute(params[:field].to_s)
+      @patient    = Patient.find(params[:id])
+      @edit_page  = Patient.edit_mastercard_attribute(params[:field].to_s)
 
       if @edit_page == 'guardian'
         @guardian = {}
         @patient.person.relationships.map{|r| @guardian[Person.find(r.person_b).name] = Person.find(r.person_b).id.to_s;'' }
-        if  @guardian == {}
+        if @guardian == {}
           redirect_to :controller => 'relationships' , :action => 'search', :patient_id => @patient_id
         end
       end
@@ -371,17 +371,16 @@ class PatientsController < ApplicationController
       @patient_id = params[:patient_id]
       Patient.save_mastercard_attribute(params)
       if params[:source].to_s == 'opd'
-        redirect_to "/patients/opdcard/#{@patient_id}" and return
-
+        redirect_to "/patients/opdcard/#{@patient_id}"
       else
-        redirect_to :action => 'mastercard', :patient_id => @patient_id and return
+        redirect_to :action => 'mastercard', :patient_id => @patient_id
       end
     end
   end
 
   def summary
     @encounter_type = params[:skipped]
-    @patient_id = params[:patient_id]
+    @patient_id     = params[:patient_id]
     render :layout => "menu"
   end
 
@@ -533,7 +532,7 @@ rm /tmp/output-#{session[:user_id]}.pdf
     type = EncounterType.find_by_name('TREATMENT')
     session_date = session[:datetime].to_date rescue Date.today
     Order.find(:all,
-      :joins => "INNER JOIN encounter e USING (encounter_id)",
+      :joins      => "INNER JOIN encounter e USING (encounter_id)",
       :conditions => ["encounter_type = ? AND e.patient_id = ? AND DATE(encounter_datetime) = ?",
         type.id,@patient.id,session_date]).each do |order|
       
@@ -582,8 +581,8 @@ rm /tmp/output-#{session[:user_id]}.pdf
     encounter_type = EncounterType.find_by_name('APPOINTMENT')
     concept_id = ConceptName.find_by_name('APPOINTMENT DATE').concept_id
     count = Observation.count(:all,
-            :joins => "INNER JOIN encounter e USING(encounter_id)",:group => "value_datetime",
-            :conditions =>["concept_id = ? AND encounter_type = ? AND value_datetime >= ? AND value_datetime <= ?",
+            :joins      => "INNER JOIN encounter e USING(encounter_id)",:group => "value_datetime",
+            :conditions => ["concept_id = ? AND encounter_type = ? AND value_datetime >= ? AND value_datetime <= ?",
             concept_id,encounter_type.id,date.strftime('%Y-%m-%d 00:00:00'),date.strftime('%Y-%m-%d 23:59:59')])
     count = count.values unless count.blank?
     count = '0' if count.blank?

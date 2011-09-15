@@ -36,7 +36,7 @@ EOF
   end
 
   def encounter_type_name=(encounter_type_name)
-    self.type = EncounterType.find_by_name(encounter_type_name)
+    self.type = EncounterType[encounter_type_name]
     raise "#{encounter_type_name} not a valid encounter_type" if self.type.nil?
   end
 
@@ -110,7 +110,7 @@ EOF
                            "PART_FOLLOWUP", "PART_INITIAL",   "VITALS"]
 
     required_encounters_ids = required_encounters.inject([]) do |encounters_ids, encounter_type|
-      encounters_ids << EncounterType.find_by_name(encounter_type).id rescue nil
+      encounters_ids << EncounterType[encounter_type].id rescue nil
       encounters_ids
     end
 
@@ -142,4 +142,11 @@ EOF
       ['Lab Results', 'lab_results'],
     ]
   end
+
+  def find_last_by_encounter_type_name(encounter_name)
+    self.last :include => :encounter_type,
+        :conditions => {'encounter_type.name' => encounter_name},
+        :order      => 'encounter_datetime'
+  end
+  
 end

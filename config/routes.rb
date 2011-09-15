@@ -1,5 +1,5 @@
 ActionController::Routing::Routes.draw do |map|
-  map.root :controller => "people"
+  map.root :controller => 'people'
   map.clinic  '/clinic',  :controller => 'clinic', :action => 'index'
   map.create_remote  '/patient/create_remote',  :controller => 'people', :action => 'create_remote'
   map.admin  '/admin',  :controller => 'admin', :action => 'index'
@@ -13,6 +13,7 @@ ActionController::Routing::Routes.draw do |map|
   map.resources :relationships, :collection => {:search => :get}
   map.resources :programs, :collection => {:locations => :get, :workflows => :get, :states => :get}
   map.resources :encounter_types
+  map.resources :demographics
   map.connect ':controller/:action/:id.:format'
   map.connect ':controller/:action/:id'
   map.connect ':controller/:action/'

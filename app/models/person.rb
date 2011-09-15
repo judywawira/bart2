@@ -40,8 +40,7 @@ class Person < ActiveRecord::Base
       :dependent   => :destroy,
       :conditions  => {:voided => 0} do
     def find_by_concept_name(name)
-      concept_name = ConceptName.find_by_name(name)
-      all(:conditions => {:concept_id => concept_name.concept_id}) rescue []
+      all(:conditions => {:concept_id => ConceptName[name].concept_id}) rescue []
     end
   end
 
@@ -60,7 +59,11 @@ class Person < ActiveRecord::Base
 
   def address
     "#{self.addresses.first.city_village}"  rescue nil
-  end 
+  end
+
+  def current_address
+    self.addresses.first || self.addresses.build
+  end
 
   def age(today = Date.today)
     return nil if self.birthdate.nil?
@@ -101,13 +104,13 @@ class Person < ActiveRecord::Base
 
     # Handle months by name or number (split this out to a date method)    
     month_i = (month || 0).to_i
-    month_i = Date::MONTHNAMES.index(month) if month_i == 0 || month_i.blank?
+    month_i = Date::MONTHNAMES.index(month)      if month_i == 0 || month_i.blank?
     month_i = Date::ABBR_MONTHNAMES.index(month) if month_i == 0 || month_i.blank?
     
-    if month_i == 0 || month == "Unknown"
+    if month_i == 0 or month == 'Unknown'
       self.birthdate = Date.new(year.to_i,7,1)
       self.birthdate_estimated = 1
-    elsif day.blank? || day == "Unknown" || day == 0
+    elsif day.blank? or day == 'Unknown' or day == 0
       self.birthdate = Date.new(year.to_i,month_i,15)
       self.birthdate_estimated = 1
     else
@@ -134,8 +137,7 @@ class Person < ActiveRecord::Base
       birth_day   = self.birthdate.try :day
     end
 
-    address = self.addresses.first || self.addresses.build
-    name    = self.names.first
+    name = self.names.first
 
     demographics = {
       'person' => {
@@ -150,10 +152,10 @@ class Person < ActiveRecord::Base
           'family_name2' => name.family_name2
         },
         'addresses'     => {
-          'county_district' => address.county_district,
-          'city_village'    => address.city_village,
-          'address1'        => address.address1,
-          'address2'        => address.address2
+          'county_district' => self.current_address.county_district,
+          'city_village'    => self.current_address.city_village,
+          'address1'        => self.current_address.address1,
+          'address2'        => self.current_address.address2
         },
         'attributes'    => {
           'occupation'        => self.get_attribute('Occupation'),
@@ -304,36 +306,17 @@ class Person < ActiveRecord::Base
     end
   end
 
-  def get_attribute(attribute)
-    self.person_attributes.first(:conditions => {:person_attribute_type_id => PersonAttributeType[attribute].id}).try(:value)
+  def get_attribute(attr_name)
+    self.person_attributes.first(:conditions => {:person_attribute_type_id => PersonAttributeType[attr_name].id}).try(:value)
   end
 
-  def phone_numbers
-    home_phone_id   = PersonAttributeType['HOME PHONE NUMBER'].person_attribute_type_id
-    cell_phone_id   = PersonAttributeType['CELL PHONE NUMBER'].person_attribute_type_id
-    office_phone_id = PersonAttributeType['OFFICE PHONE NUMBER'].person_attribute_type_id
-
-    phone_number_query  = "SELECT person_attribute_type.name AS attribute_type, person_attribute.value
-                            FROM  person_attribute, person_attribute_type
-                            WHERE person_attribute_type.person_attribute_type_id = person_attribute.person_attribute_type_id
-                            AND   person_attribute.person_attribute_type_id IN (#{home_phone_id}, #{cell_phone_id}, #{office_phone_id})
-                            AND   person_id = #{person_id}"
-
-query = <<-EOQ
-SELECT person_attribute_type.name AS attribute_type, person_attribute.value
-  FROM person_attribute JOIN person_attribute_type ON (person_attribute_type_id)
-  WHERE person_attribute_type.name IN ('HOME PHONE NUMBER', 'CELL PHONE NUMBER', 'OFFICE PHONE NUMBER')
-  AND   person_id = #{person_id}
-EOQ
-
-    phone_number_objects = PersonAttribute.find_by_sql(phone_number_query)
-
-    # create a hash of 'symbols' and 'values' like:
-    #   {cell_phone_number => '0123456789', home_phone_number => '0987654321'}
-    phone_number_objects.reduce({}) do |result, number|
-      attribute_type         = number.attribute_type.downcase.gsub(' ', '_').to_sym
-      result[attribute_type] = number.value
-      result
+  def set_attribute(attr_name, value)
+    attribute = self.get_attribute('Occupation')
+    if attribute
+      existing_person_attribute.update_attributes(:value => value.to_s)
+    else
+      type_id = PersonAttributeType[attr_name].id
+      self.person_attributes.create(:person_attribute_type_id => type_id, :value => value.to_s)
     end
   end
 
@@ -342,9 +325,15 @@ EOQ
   end
 
   def phone_numbers
-    { 'Cell phone number'   => self.get_attribute('Cell Phone Number'),
+    @phone_numbers ||= {
+      'Cell phone number'   => self.get_attribute('Cell Phone Number'),
       'Office phone number' => self.get_attribute('Office Phone Number'),
-      'Home phone number'   => self.get_attribute('Home phone number') }
+      'Home phone number'   => self.get_attribute('Home phone number')
+    }
+  end
+
+  def update_demographics
+
   end
 
 end

@@ -1,23 +1,20 @@
 class PersonNameCode < ActiveRecord::Base
-  set_table_name "person_name_code"
-  set_primary_key "person_name_code_id"
+  set_table_name 'person_name_code'
+  set_primary_key 'person_name_code_id'
+
   include Openmrs
   
-  belongs_to :person_name, :conditions => {:voided => 0}
+  belongs_to :person_name,
+      :conditions => {:voided => 0}
   
   def self.rebuild_person_name_codes
     PersonNameCode.delete_all
-    names = PersonName.find(:all)
-    names.each {|name|
-      PersonNameCode.create(
-        :person_name_id => name.person_name_id,
-        :given_name_code => (name.given_name || '').soundex,
-        :middle_name_code => (name.middle_name || '').soundex,
-        :family_name_code => (name.family_name || '').soundex,
-        :family_name2_code => (name.family_name2 || '').soundex,
-        :family_name_suffix_code => (name.family_name_suffix || '').soundex
-      ) unless (name.voided? || name.person.nil?|| name.person.voided? || name.person.patient.nil?|| name.person.patient.voided?)
-    }
+    names = PersonName.all
+    names.each do |name|
+      unless name.voided? or name.person.nil? or name.person.voided? or name.person.patient.nil? or name.person.patient.voided?
+        name.build_name_code
+      end
+    end
   end
 
   # Find all of the matches for this code  
@@ -31,7 +28,7 @@ class PersonNameCode < ActiveRecord::Base
   #   - Search text alphabetized
   def self.find_most_common(field_name, search_string)
     soundex = (search_string || '').soundex
-    self.find_by_sql([
+    self.find_by_sql([ # !!! FIXME: THIS QUERY IS PRONE TO SQL INJECTION ATTACKS !!!
       "SELECT DISTINCT #{field_name} AS #{field_name}, person_name.person_name_id AS id
        FROM person_name_code \
        INNER JOIN person_name ON person_name_code.person_name_id = person_name.person_name_id \

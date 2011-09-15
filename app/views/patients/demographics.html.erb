@@ -91,33 +91,29 @@
         <td>
           <div style="width:100%; height:349px; overflow:auto;">
             <table cellspacing="0" cellpadding="1" border="0" width="100%" >
-              <% @visits.sort.each do %>
+              <% @visits.sort.each do |date, value| %>
                 <% color = cycle('white', 'blue') %>
                 <tr>
-                  <td class='color_<%=color%>' style="text-align:left;"><%= date.strftime('%d/%m/%Y') %></td>
-                  <td class='color_<%=color%>'><%= value.patient_present || '&nbsp;' %></td>
-                  <td class='color_<%=color%>'>
-                    <%
-                      visit_value = nil
+                  <td class='color_<%= color %>' style="text-align:left;"><%= date.strftime('%d/%m/%Y') %></td>
+                  <td class='color_<%= color %>'><%= value.patient_present || '&nbsp;' %></td>
+                  <td class='color_<%= color %>'>
+                    <% visit_value = nil
                       (value.primary_diagnosis || []).map do | val |
                         if visit_value.blank?
                           visit_value = val
-                        else visit_value+="<br />#{visit_value}" end
-                      end
-                    %>
+                        else visit_value += "<br />#{visit_value}" end
+                      end %>
                     <%= visit_value || '&nbsp;' %>
                   </td>
                   <td class='color_<%=color%>'>
-                    <%
-                      visit_value = nil
+                    <% visit_value = nil
                       (value.treatment || []).map do | val |
                         if visit_value.blank?
                           visit_value = val
                         else
                           visit_value += "<br />#{visit_value}"
                         end
-                      end
-                    %>
+                      end %>
                     <%= visit_value || '&nbsp;' %>
                   </td>
                   <td class='color_<%=color%>'><%= value.referal_destination || '&nbsp;' %></td>

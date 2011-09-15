@@ -13,6 +13,9 @@ class PatientIdentifier < ActiveRecord::Base
       :foreign_key => :patient_id,
       :conditions  => {:voided => 0}
 
+  named_scope :typed,
+      lambda{|type_name| {:include => :type, :conditions => {'patient_identifier_type.name' => type_name}} }
+
   def self.calculate_checkdigit(number)
     # This is Luhn's algorithm for checksums
     # http://en.wikipedia.org/wiki/Luhn_algorithm
@@ -66,8 +69,8 @@ class PatientIdentifier < ActiveRecord::Base
   end
 
   def self.out_of_range_arv_numbers(arv_number_range, start_date , end_date)
-    arv_number_id             = PatientIdentifierType.find_by_name('ARV Number').patient_identifier_type_id
-    national_identifier_id    = PatientIdentifierType.find_by_name('National id').patient_identifier_type_id
+    arv_number_id             = PatientIdentifierType['ARV Number'].id
+    national_identifier_id    = PatientIdentifierType['National id'].id
     arv_start_number          = arv_number_range.first
     arv_end_number            = arv_number_range.last
 
