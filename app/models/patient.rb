@@ -990,16 +990,12 @@ EOF
 EOF
     end
 
-
     return table
   end   
 
-  def id_identifiers
+  def identifier_values
     identifier_names = ['Legacy Pediatric id', 'National id', 'Legacy National id']
-    identifier_types = PatientIdentifierType.all(:conditions => {:name => identifier_names}).collect(&:id)
-    
-    PatientIdentifier.all(:conditions => ['patient_id=? AND identifier_type IN (?)',
-        self.id, identifier_types]).collect(&:identifier)
+    self.patient_identifiers.typed(identifier_names).all.collect(&:identifier)
   end
 
   def self.edit_mastercard_attribute(attribute_name)
@@ -1010,7 +1006,7 @@ EOF
     patient = Patient.find(params[:patient_id])
     case params[:field]
     when 'arv_number'
-      type = params['identifiers'][0][:identifier_type]
+      type = params['identifiers'][0]['identifier_type']
       patient_identifiers = self.patient_identifiers.all(:conditions => {:identifier_type => type.to_i})
 
       patient_identifiers.each do |identifier|
@@ -1059,13 +1055,11 @@ EOF
   end
 
   def eid_number
-    eid_number_id = PatientIdentifierType['EID Number'].patient_identifier_type_id
-    PatientIdentifier.identifier(self.patient_id, eid_number_id).try(:identifier)
+    self.patient_identifiers.typed('EID Number').first.try :identifier
   end
 
   def pre_art_number
-    pre_art_number_id = PatientIdentifierType['Pre ART Number (Old format)'].patient_identifier_type_id
-    PatientIdentifier.identifier(self.patient_id, pre_art_number_id).try(:identifier)
+    self.patient_identifiers.typed('Pre ART Number (Old format)').first.try :identifier
   end
 
   def traditional_authority
@@ -1073,9 +1067,7 @@ EOF
   end
   
   def appointment_dates(start_date, end_date = nil)
-
     end_date = start_date if end_date.nil?
-
     appointment_date_concept_id = Concept['APPOINTMENT DATE'].try(:concept_id)
 
     Observation.all(:conditions => ['DATE(obs.value_datetime) BETWEEN ? AND ? AND obs.concept_id = ? AND obs.voided = 0 AND obs.person_id = ?', start_date.to_date, end_date.to_date, appointment_date_concept_id, self.id])
@@ -1083,7 +1075,7 @@ EOF
 
   def reason_for_art_eligibility
     reasons = self.person.observations.recent(1).question('REASON FOR ART ELIGIBILITY').all
-    reasons.map{|c|ConceptName.find(c.value_coded_name_id).name}.join(',')
+    reasons.map{|c| ConceptName.find(c.value_coded_name_id).name}.join(',')
   rescue
     nil
   end

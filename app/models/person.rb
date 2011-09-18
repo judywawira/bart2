@@ -152,22 +152,22 @@ class Person < ActiveRecord::Base
           'family_name2' => name.family_name2
         },
         'addresses'     => {
-          'county_district' => self.current_address.county_district,
-          'city_village'    => self.current_address.city_village,
           'address1'        => self.current_address.address1,
-          'address2'        => self.current_address.address2
+          'address2'        => self.current_address.address2,
+          'city_village'    => self.current_address.city_village,
+          'county_district' => self.current_address.county_district
         },
         'attributes'    => {
           'occupation'        => self.get_attribute('Occupation'),
           'cell_phone_number' => self.get_attribute('Cell Phone Number')
         }
+        'identifiers'   => {}
       }
     }
  
-    demographics['person']['patient'] = {'identifiers' => {}}
     unless self.patient.try(:patient_identifiers).blank?
       self.patient.patient_identifiers.each do |identifier|
-        demographics['person']['patient']['identifiers'][identifier.type.name] = identifier.identifier
+        demographics['person']['identifiers'][identifier.type.name] = identifier.identifier
       end
     end
 
@@ -181,9 +181,10 @@ class Person < ActiveRecord::Base
   end
 
   def self.search_by_identifier(identifier)
-    PatientIdentifier.find_all_by_identifier(identifier).map{|id| id.patient.person} unless identifier.blank?
-  rescue
-    nil
+    unless identifier.blank?
+      self.all(:include    => {:patient => :patient_identifier},
+               :conditions => {'identifierpatient_identifiers.value' => identifier})
+    end
   end
 
   def self.search(params)
@@ -191,17 +192,16 @@ class Person < ActiveRecord::Base
 
     case people.size
     when 1
-      return people.first.id
+      people.first.id
     when 0
-      return Person.all(:include => [{:names => [:person_name_code]}, :patient],
-                        :conditions => ['gender = ? AND
-                       (person_name.given_name LIKE ? OR person_name_code.given_name_code LIKE ?) AND
-                       (person_name.family_name LIKE ? OR person_name_code.family_name_code LIKE ?)',
-                        params[:gender], params[:given_name], (params[:given_name] || '').soundex,
-                        params[:family_name], (params[:family_name] || '').soundex
-                       ])
+      Person.all(:include => [{:names => :person_name_code}, :patient],
+                 :conditions => ['gender = ? AND
+                  (person_name.given_name LIKE ? OR person_name_code.given_name_code LIKE ?) AND
+                  (person_name.family_name LIKE ? OR person_name_code.family_name_code LIKE ?)',
+                  params[:gender], params[:given_name], (params[:given_name] || '').soundex,
+                  params[:family_name], (params[:family_name] || '').soundex])
     else
-      return people
+      people
     end
 
     # temp removed
@@ -249,15 +249,16 @@ class Person < ActiveRecord::Base
 
   end
 
-  def self.find_by_demographics(person_demographics)
-    national_id = person_demographics['person']['patient']['identifiers']['National id'] rescue nil
+  def self.find_by_demographics(demographics)
+    person_demographics = demographics['person']
+    national_id = person_demographics['identifiers']['National id'] rescue nil
     results     = Person.search_by_identifier(national_id) unless national_id.nil?
     unless results.blank?
       return results
     else
-      gender      = person_demographics['person']['gender'] rescue nil
-      given_name  = person_demographics['person']['names']['given_name'] rescue nil
-      family_name = person_demographics['person']['names']['family_name'] rescue nil
+      gender      = person_demographics['gender'] || nil
+      given_name  = person_demographics['names']['given_name'] rescue nil
+      family_name = person_demographics['names']['family_name'] rescue nil
 
       search_params = {:gender => gender, :given_name => given_name, :family_name => family_name}
       results       = Person.search(search_params)

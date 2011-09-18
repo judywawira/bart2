@@ -2,13 +2,26 @@ class Observation < ActiveRecord::Base
   set_table_name :obs
   set_primary_key :obs_id
   include Openmrs
-  belongs_to :encounter, :conditions => {:voided => 0}
-  belongs_to :order, :conditions => {:voided => 0}
-  belongs_to :concept, :conditions => {:retired => 0}
-  belongs_to :concept_name, :class_name => "ConceptName", :foreign_key => "concept_name", :conditions => {:voided => 0}
-  belongs_to :answer_concept, :class_name => "Concept", :foreign_key => "value_coded", :conditions => {:retired => 0}
-  belongs_to :answer_concept_name, :class_name => "ConceptName", :foreign_key => "value_coded_name_id", :conditions => {:voided => 0}
-  has_many :concept_names, :through => :concept
+  belongs_to :encounter,
+      :conditions => {:voided => 0}
+  belongs_to :order,
+      :conditions => {:voided => 0}
+  belongs_to :concept,
+      :conditions => {:retired => 0}
+  belongs_to :concept_name,
+      :class_name  => 'ConceptName',
+      :foreign_key => 'concept_name',
+      :conditions  => {:voided => 0}
+  belongs_to :answer_concept,
+      :class_name  => 'Concept',
+      :foreign_key => 'value_coded',
+      :conditions  => {:retired => 0}
+  belongs_to :answer_concept_name,
+      :class_name  => 'ConceptName',
+      :foreign_key => 'value_coded_name_id',
+      :conditions  => {:voided => 0}
+  has_many :concept_names,
+      :through => :concept
 
   named_scope :recent,
       lambda {|number| {:order => 'obs_datetime DESC, date_created DESC', :limit => number}}
