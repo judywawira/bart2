@@ -175,7 +175,7 @@ class Person < ActiveRecord::Base
  
     if self.patient.patient_identifiers.any?
       self.patient.patient_identifiers.each do |identifier|
-        demographics_data['person']['identifiers'][identifier.type.name] = identifier.identifier
+        demographics['person']['identifiers'][identifier.type.name] = identifier.identifier
       end
     end
 

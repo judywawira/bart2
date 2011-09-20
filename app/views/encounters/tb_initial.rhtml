@@ -37,13 +37,18 @@
   <%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
   <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
 
-  <%= touch_yes_no_unknown_tag "EVER RECEIVED TB TREATMENT", @patient, nil,
-    {:id => "tb_treatment",
-     :helpText => 'Ever received TB treatment'} %>
+  <%  if @any_previous_tb_programs %>
+    <%= touch_hidden_tag("EVER RECEIVED TB TREATMENT", @patient, "Yes", {:id => "tb_treatment"}) %>
+  <% else %>
+
+    <%= touch_yes_no_unknown_tag "EVER RECEIVED TB TREATMENT", @patient, nil,
+      {:id => "tb_treatment",
+       :helpText => 'Ever received TB treatment'} %>
+  <% end %>
 
   <%= touch_yes_no_unknown_tag "Transfer in", @patient, nil,
       {:id => "transfer_in",
-       :condition => "$('tb_treatment').value =='YES'",
+       :condition => "$('tb_treatment').value == 'YES'",
        :helpText => 'Transfer in?'} %>
 
   <%= touch_text_field_tag "Clinic Location", @patient, nil,
@@ -59,11 +64,21 @@
 			 :max => "#{session[:datetime].to_date rescue Date.today}",
 			 :helpText => "Date of TB initiation"} %>
 
+ <%= touch_select_tag "SPUTUM RESULT", @patient, options_for_select([['',''],['Negative','Negative'],['Positive','Positive'], ['NA','NA']]),
+  {:id => "sputum_result",
+	 :condition => "$('transfer_in').value =='YES'",
+	 :helptext => "Smear results at initiation"}
+  %>
+
+  <%= touch_date_tag "DATE OF SPUTUM MICROSCOPY", @patient, nil,
+			{:id => "date_of_initial_smear_results",
+			 :condition => "$('sputum_result').value != 'NA' && $('transfer_in').value =='YES'",
+			 :max => "#{session[:datetime].to_date rescue Date.today}",
+			 :helpText => "Date of initial smear results"} %>
+  
   <%= touch_text_field_tag "TB REGISTRATION NUMBER", @patient, nil,
 			{	:id => "previous_tb_registration_number",
-			  :field_type => 'number',
 			  :condition => "$('transfer_in').value =='YES'",
-			  :tt_pageStyleClass => "Numeric NumbersOnly",
 				:helpText => "TB registration number at previous location" } %>
 
   <%= touch_text_field_tag "PREVIOUS WEIGHT", @patient, nil,

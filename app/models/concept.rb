@@ -43,7 +43,7 @@ class Concept < ActiveRecord::Base
   end
 
   def fullname
-    name = self.concept_names.typed('FULLY_SPECIFIED').first.name
+	name = self.concept_names.typed('FULLY_SPECIFIED').first.name rescue nil
     name.blank? ? self.concept_names.first.try(:name) : name
   end
 

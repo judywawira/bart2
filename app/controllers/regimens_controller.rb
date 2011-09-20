@@ -66,6 +66,42 @@ class RegimensController < ApplicationController
 		if (not @tb_programs.blank?) and prescribe_tb_medication
 			@prescribe_tb_drugs = true
 		end
+		
+	    session_date = session[:datetime].to_date rescue Date.today
+        current_encounters = @patient.encounters.find_by_date(session_date)
+        @family_planning_methods = []
+        @is_patient_pregnant_value = 'Unknown'
+
+        for encounter in current_encounters.reverse do
+
+            if encounter.name.humanize.include?('Hiv staging') || encounter.name.humanize.include?('Tb visit') || encounter.name.humanize.include?('Art visit') 
+             
+                encounter = Encounter.find(encounter.id, :include => [:observations])
+
+                for obs in encounter.observations do
+                    if obs.concept_id == ConceptName.find_by_name("IS PATIENT PREGNANT?").concept_id
+                        @is_patient_pregnant_value = "#{obs.to_s(["short", "order"]).to_s.split(":")[1]}"
+                    end                    
+                end
+
+                if encounter.name.humanize.include?('Tb visit') || encounter.name.humanize.include?('Art visit')
+
+                    encounter = Encounter.find(encounter.id, :include => [:observations])
+                    for obs in encounter.observations do
+                        if obs.concept_id == ConceptName.find_by_name("CURRENTLY USING FAMILY PLANNING METHOD").concept_id
+                            @currently_using_family_planning_methods = "#{obs.to_s(["short", "order"]).to_s.split(":")[1]}".squish
+                        end
+
+                        if obs.concept_id == ConceptName.find_by_name("FAMILY PLANNING METHOD").concept_id
+                            @family_planning_methods << "#{obs.to_s(["short", "order"]).to_s.split(":")[1]}".squish.humanize
+                        end
+                    end
+                    
+                end
+                
+            end
+        end
+
 
 	end
   

@@ -109,6 +109,13 @@ function tb_number(){
 
   }
 
+  function summary() {
+    var display = "<div><span class='title' style='font-size:40px;'>" + "Patient has previously been on TB treatment" + "</span></div>";
+    $('inputFrame'+tstCurrentPage).innerHTML = '<div id="summary">' + display + '</div>' ;
+    $("clearButton").style.display = "none";
+
+  }
+
 </script>
 
 <!--.........TODO...........
@@ -123,6 +130,7 @@ Check appropriateness of Encounter type
 
 Check applicability of code below
 -->
+ <% @smear_positive = @recent_sputum_results.map{|obs| obs.to_s if obs.answer_string.to_s.strip != "Negative"} %>
 
 <% if not @patient_has_closed_TB_program_at_current_location and @patient.encounters.map{|e|e.name}.include?('TB REGISTRATION') %>
   <div class="inputPage NoKeyboard" id="page" style="display: block;">
@@ -144,6 +152,12 @@ Check applicability of code below
   <%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
   <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
 
+  <% if @had_tb_treatment_before %>
+    <%= text_field_tag :summary, nil, { :tt_onLoad => "summary();",
+      :optional => "true", :tt_pageStyleClass => "NoControls" ,
+      :helpText => ''} %>
+  <% end %>
+
   <%= touch_identifier_tag @patient, "District TB Number", @identifier_value,
         {:id => "tb_district_number",
          :optional => false,
@@ -162,10 +176,14 @@ Check applicability of code below
      :helpText => "Weeks of current cough" } %>
 
 	<% if @tb_classification == nil %>
-		<%= touch_select_tag "TB classification", @patient, options_for_select(@select_options['tb_classification']),
+	   <% if @smear_positive.to_s.blank? %>
+		  <%= touch_select_tag "TB classification", @patient, options_for_select(@select_options['tb_classification']),
 			{	:id => "tb_classification",
 				:tt_pageStyleClass => "NoKeyboard",
 				:helpText => "TB classification" } %>
+		 <% else %>
+		   <%= touch_hidden_tag "TB classification", @patient, "Pulmonary tuberculosis", :id => "tb_classification" %>
+		 <% end %>
 	<% else %>
 		<%= touch_hidden_tag "TB classification", @patient, @tb_classification, :id => "tb_classification" %>
 	<% end %> 
@@ -191,8 +209,7 @@ Check applicability of code below
 		<script>
 			set_TB_program_values($('tb_type').value);
 		</script>
-	<% end %> 
-
+	<% end %>
 
   <% if !@patient.patient_programs.current.local.map(&:program).map(&:name).include?('TB PROGRAM') %>
       <%= hidden_field_tag("programs[][patient_program_id]", nil) %>
@@ -214,7 +231,6 @@ Check applicability of code below
       {:id => "enroll_patient_in_art",
        :helpText => 'Enroll patient in ART'} %>
   <%end%>
-
 
   <%= submit_tag "Finish" %>
 </form>

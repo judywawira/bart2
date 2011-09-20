@@ -614,4 +614,9 @@ rm /tmp/output-#{session[:user_id]}.pdf
     @patient_id = params[:patient_id]
   end
 
+  def next_task_description
+    @task = Task.find(params[:task_id])
+    render :template => 'dashboards/next_task_description', :layout => false
+  end
+    
 end

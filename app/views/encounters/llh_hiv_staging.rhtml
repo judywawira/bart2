@@ -326,6 +326,10 @@ if not reason_for_art.blank? and not art_reasons.upcase == 'UNKNOWN'%>
   <%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
   <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
 
+  <% @retrospective = 'false'
+     @retrospective = 'true' if session[:datetime]
+  %>
+
   <%= touch_select_tag "PRESUMED SEVERE HIV CRITERIA PRESENT", @patient, concept_set_options('PRESUMED SEVERE HIV CRITERIA IN INFANTS'),
     {:id => "presumed_severe_hiv_conditions",
      :multiple => true,
@@ -336,28 +340,34 @@ if not reason_for_art.blank? and not art_reasons.upcase == 'UNKNOWN'%>
      :tt_pageStyleClass => "NoKeyboard NoInput small"  } %>
 
   <% if @patient.person.age > 14 
-    if @patient.person.gender == 'F' 
-      obs_date = session[:datetime].to_date rescue Date.today
-      patient_pregnant = Observation.find(:first,:conditions =>["concept_id = ? AND person_id = ? AND DATE(obs_datetime) = ?",
-                       ConceptName.find_by_name('IS PATIENT PREGNANT?').concept_id,
-                       @patient.id,obs_date])
-    %>
+    if @patient.person.gender == 'F' %>
 
-      <% if patient_pregnant.blank? %>
-      <%= touch_yes_no_unknown_tag "IS PATIENT PREGNANT?", @patient, nil,
-        {:id => "pregnant",
-        :optional => false,
-        :tt_onLoad => "$('nextButton').style.display = 'none';",
-        :tt_requireNextClick => false,
-        :helpText => "Is patient pregnant?" } %>
-      <% end %>    
-      
-      <%= touch_yes_no_unknown_tag "BREASTFEEDING", @patient, nil,
-        {:id => "breast_feeding",
-        :optional => false,
-        :tt_onLoad => "$('nextButton').style.display = 'none';",
-        :tt_requireNextClick => false,
-        :helpText => "Is patient breast feeding?" } %>
+        <% if @is_patient_pregnant_value.nil?%>
+
+            <%= touch_yes_no_unknown_tag "IS PATIENT PREGNANT?", @patient, nil,
+            {:id => "pregnant",
+            :optional => false,
+            :tt_onLoad => "$('nextButton').style.display = 'none';",
+            :tt_requireNextClick => false,
+            :helpText => "Is patient pregnant?" } %>
+
+        <%else%>
+            <%= touch_hidden_tag "IS PATIENT PREGNANT?" , @patient, @is_patient_pregnant_value , :id => "pregnant" %>
+        <%end%>
+
+        <% if @is_patient_breast_feeding_value.nil?%>
+
+            <%= touch_yes_no_unknown_tag "IS PATIENT BREAST FEEDING?", @patient, nil,
+            {:id => "breast_feeding",
+            :optional => false,
+            :tt_onLoad => "$('nextButton').style.display = 'none';",
+            :tt_requireNextClick => false,
+            :helpText => "Is patient breast feeding?" } %>
+
+        <%else%>
+            <%= touch_hidden_tag "IS PATIENT BREAST FEEDING?" , @patient, @is_patient_breast_feeding_value , :id => "breast_feeding" %>
+        <%end%>
+
     <% end %>    
 
     <%    
@@ -392,6 +402,12 @@ if not reason_for_art.blank? and not art_reasons.upcase == 'UNKNOWN'%>
           </script><%
         end
       end
+      retro_conditions = ["Unspecified stage I condition",
+                          "Unspecified stage II condition",
+                          "Unspecified stage III condition",
+                          "Unspecified stage IV condition"]
+      tb_hiv_exclusions = ['Pulmonary tuberculosis',
+                           'Pulmonary tuberculosis within the last 2 years']
       count = 0
       concept = ConceptName.find_by_name("WHO Stage defining conditions not explicitly asked adult").concept
       explicitly_asked_questions = concept.concept_answers.collect{|c|c.name}
@@ -402,13 +418,50 @@ if not reason_for_art.blank? and not art_reasons.upcase == 'UNKNOWN'%>
           extended_staging << staging_condition and next
         end
       %>
-      <%= touch_yes_no_unknown_tag staging_condition , @patient, nil,
-        {:id => "staging_condition_#{count+=1}" ,
-        :optional => false,
-        :tt_onLoad => "$('nextButton').style.display = 'none';",
-        :tt_requireNextClick => false,
-        :tt_onUnLoad => "setSelectedStageConditions(#{count},'#{staging_condition}');",
-        :helpText => staging_condition.humanize.gsub('stage i','stage I').gsub('stage Ii','stage II').gsub('stage IIi','stage III').gsub('hiv','HIV').gsub('eptb','EPTB').gsub('tb','TB').gsub('Iv','IV') } %>
+      <%  if @retrospective == 'true'%>
+        <% if @tb_status == true && @hiv_status != 'Negative'
+             unless tb_hiv_exclusions.include?(staging_condition)%>
+              <%= touch_yes_no_unknown_tag staging_condition , @patient, nil,
+                {:id => "staging_condition_#{count+=1}" ,
+                :optional => false,
+                :tt_onLoad => "$('nextButton').style.display = 'none';",
+                :tt_requireNextClick => false,
+                :tt_onUnLoad => "setSelectedStageConditions(#{count},'#{staging_condition}');",
+                :helpText => staging_condition.humanize.gsub('stage i','stage I').gsub('stage Ii','stage II').gsub('stage IIi','stage III').gsub('hiv','HIV').gsub('eptb','EPTB').gsub('tb','TB').gsub('Iv','IV') } %>
+             <% end
+           else %>
+            <%= touch_yes_no_unknown_tag staging_condition , @patient, nil,
+                {:id => "staging_condition_#{count+=1}" ,
+                :optional => false,
+                :tt_onLoad => "$('nextButton').style.display = 'none';",
+                :tt_requireNextClick => false,
+                :tt_onUnLoad => "setSelectedStageConditions(#{count},'#{staging_condition}');",
+                :helpText => staging_condition.humanize.gsub('stage i','stage I').gsub('stage Ii','stage II').gsub('stage IIi','stage III').gsub('hiv','HIV').gsub('eptb','EPTB').gsub('tb','TB').gsub('Iv','IV') } %>
+           <%end %>
+      <% else
+          unless retro_conditions.include?(staging_condition)%>
+            <% if @tb_status == true && @hiv_status != 'Negative'
+                  unless tb_hiv_exclusions.include?(staging_condition)%>
+                    <%= touch_yes_no_unknown_tag staging_condition , @patient, nil,
+                      {:id => "staging_condition_#{count+=1}" ,
+                      :optional => false,
+                      :tt_onLoad => "$('nextButton').style.display = 'none';",
+                      :tt_requireNextClick => false,
+                      :tt_onUnLoad => "setSelectedStageConditions(#{count},'#{staging_condition}');",
+                      :helpText => staging_condition.humanize.gsub('stage i','stage I').gsub('stage Ii','stage II').gsub('stage IIi','stage III').gsub('hiv','HIV').gsub('eptb','EPTB').gsub('tb','TB').gsub('Iv','IV') } %>
+                  <% end
+              else %>
+                <%= touch_yes_no_unknown_tag staging_condition , @patient, nil,
+                      {:id => "staging_condition_#{count+=1}" ,
+                      :optional => false,
+                      :tt_onLoad => "$('nextButton').style.display = 'none';",
+                      :tt_requireNextClick => false,
+                      :tt_onUnLoad => "setSelectedStageConditions(#{count},'#{staging_condition}');",
+                      :helpText => staging_condition.humanize.gsub('stage i','stage I').gsub('stage Ii','stage II').gsub('stage IIi','stage III').gsub('hiv','HIV').gsub('eptb','EPTB').gsub('tb','TB').gsub('Iv','IV') } %>
+             <%  end
+           end
+         end %>
+
       <%end%>
 
       <%= touch_yes_no_tag "Perform extended staging" , @patient, nil,

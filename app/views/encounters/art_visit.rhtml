@@ -71,29 +71,30 @@
   <%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
   <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
 
-  <% if @patient.person.gender == 'F' && @patient.person.age > 14 
-      obs_date = session[:datetime].to_date rescue Date.today
-      patient_pregnant = Observation.find(:first,:conditions =>["concept_id = ? AND person_id = ? AND DATE(obs_datetime) = ?",
-                       ConceptName.find_by_name('IS PATIENT PREGNANT?').concept_id,
-                       @patient.id,obs_date])
+  <% if @patient.person.gender == 'F' && @patient.person.age > 14 %>
   
-      if patient_pregnant.blank? %>
-        <%= touch_yes_no_unknown_tag "IS PATIENT PREGNANT?", @patient, nil,
-        {:optional => true,
-        :helpText => "Is patient pregnant?" } %>
-      <% end %>   
-      
-      <% patient_lactating = Observation.find(:first,:conditions =>["concept_id = ? AND person_id = ? AND DATE(obs_datetime) = ?",
-                       ConceptName.find_by_name('IS PATIENT BREAST FEEDING?').concept_id,
-                       @patient.id,obs_date]) 
-  
-      if patient_lactating.blank? %>
-        <%= touch_yes_no_unknown_tag "IS PATIENT BREAST FEEDING?", @patient, nil,
-          {:id => "breast_feeding",
-          :optional => true,
-          :helpText => "Is patient breast feeding?" } %> 
-      <% end %>   
-       
+        <% if @is_patient_pregnant_value.nil?%>
+
+            <%= touch_yes_no_unknown_tag "IS PATIENT PREGNANT?", @patient, nil,
+            {:id => "pregnant",
+            :optional => false,
+            :helpText => "Is patient pregnant?" } %>
+
+        <%else%>
+            <%= touch_hidden_tag "IS PATIENT PREGNANT?" , @patient, @is_patient_pregnant_value , :id => "pregnant" %>
+        <%end%>
+
+        <% if @is_patient_breast_feeding_value.nil?%>
+
+            <%= touch_yes_no_unknown_tag "IS PATIENT BREAST FEEDING?", @patient, nil,
+            {:id => "breast_feeding",
+            :optional => false,
+            :helpText => "Is patient breast feeding?" } %>
+
+        <%else%>
+            <%= touch_hidden_tag "IS PATIENT BREAST FEEDING?" , @patient, @is_patient_breast_feeding_value , :id => "breast_feeding" %>
+        <%end%>
+
   <% end %>    
   
   <% if ask_standard_art_side_effects %>
@@ -127,10 +128,7 @@
        :multiple => false,
        :helpText => "TB Status" } %>
     <% else %>
-      <%= hidden_field_tag("observations[][concept_name]", "TB STATUS") %>
-      <%= hidden_field_tag("observations[][patient_id]", @patient.id) %>
-      <%= hidden_field_tag("observations[][obs_datetime]", DateTime.now()) %>
-      <%= hidden_field_tag("observations[][value_coded]", ConceptName.find_by_name("#{@patient.tb_status}").concept_id) %>
+        <%= touch_hidden_tag "TB STATUS" , @patient, ConceptName.find_by_name("#{@patient.tb_status}").concept_id, {:id => "tb_status"} %>
     <% end %>
 
   <%if @patient.child_bearing_female?%>
@@ -138,18 +136,32 @@
       {:optional => false,
        :helpText => "Depo-provera injection given?" } %>
 
-  <%= touch_yes_no_unknown_tag "CURRENTLY USING FAMILY PLANNING METHOD", @patient, nil,
-      {:id => "on_fpm",
-        :helpText => "Currently using family planning method" } %>
+    <% if @currently_using_family_planning_methods.nil? %>
+        <%= touch_yes_no_unknown_tag "CURRENTLY USING FAMILY PLANNING METHOD", @patient, nil,
+          {:id => "on_fpm",
+            :helpText => "Currently using family planning method" } %>
 
-  <%= touch_select_tag "FAMILY PLANNING METHOD", @patient, options_for_select(@select_options['family_planning_methods']),
-    {:id => "fpm_used",
-     :condition => '$("on_fpm").value == "YES"',
-     :multiple => true,
-     :tt_pageStyleClass => "NoKeyboard",
-     :helpText => "What method?" } %>
-  <%end%>
- 
+        <%= touch_select_tag "FAMILY PLANNING METHOD", @patient, options_for_select(@select_options['family_planning_methods']),
+        {:id => "fpm_used",
+         :condition => '$("on_fpm").value == "YES"',
+         :multiple => true,
+         :tt_pageStyleClass => "NoKeyboard",
+         :helpText => "What method?" } %>
+
+    <%else%>
+        
+        <%= touch_hidden_tag "CURRENTLY USING FAMILY PLANNING METHOD" , @patient, @currently_using_family_planning_methods.to_s , {:id => "on_fpm"} %>
+
+        <% id = 0 
+            if @family_planning_methods.length != 0 
+                @family_planning_methods.each do | planning_method | %>
+                    <%= touch_hidden_tag "FAMILY PLANNING METHOD" , @patient, planning_method.to_s , {:id => "fpm_used_#{id}"} %>
+                    <% id = id + 1 
+                 end 
+            end %>
+    <% end %>
+
+<%end%>
   <%= touch_yes_no_unknown_tag "Prescribe ARVs this visit", @patient, nil,
     {:optional => false,
      :helpText => "Prescribe drugs during this visit" } %>
@@ -170,7 +182,7 @@
     <%= touch_hidden_tag "REFER TO ART CLINICIAN", @patient, "NO", :id => "refer_to_clinician" %>
   <%end%>
 
-  <%= touch_yes_no_tag "Allergic to sulphur", @patient, nil,
+  <%= touch_yes_no_unknown_tag "Allergic to sulphur", @patient, nil,
 		{	:id => "allergic_to_sulphur",
 			:condition => "$('refer_to_clinician').value == 'NO'" ,
 			:helpText => "Is patient allergic to sulphur" } %>

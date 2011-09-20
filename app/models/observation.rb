@@ -120,7 +120,7 @@ class Observation < ActiveRecord::Base
   def answer_string(tags=[])
     coded_answer_name   = self.answer_concept.concept_names.typed(tags).first.name rescue nil
     coded_answer_name ||= self.answer_concept.concept_names.first.name rescue nil
-    coded_name = "#{coded_answer_name} #{self.value_modifier}#{self.value_text} #{self.value_numeric}#{self.value_datetime.strftime('%d/%b/%Y') rescue nil}#{self.value_boolean && (self.value_boolean ? 'Yes' : 'No' rescue nil)}#{" [#{order}]" if order_id and tags.include?('order')}"
+    coded_name = "#{coded_answer_name} #{self.value_modifier}#{self.value_text} #{self.value_numeric}#{self.value_datetime.strftime("%d/%b/%Y") rescue nil}#{self.value_boolean && (self.value_boolean ? 'Yes' : 'No' rescue nil)}#{" [#{order}]" if order_id and tags.include?('order')}"
     #the following code is a hack
     #we need to find a better way because value_coded can also be a location - not only a concept
     return coded_name unless coded_name.blank?

@@ -152,9 +152,9 @@
 
   <%= select_tag "person[birth_month]", month_name_options, {:helpText => 'Month of Birth', :condition => '$("person_birth_year").value.toLowerCase() != "unknown"',:validationJS => "validateDOB();",:validationMessage => 'Please enter a valid date'}%>
 
-  <%= text_field_tag "person[age_estimate]", nil, {:helpText => 'Age Estimate', :absoluteMin => 1, :absoluteMax => age_limit, :field_type => 'number', :condition => '$("person_birth_year").value == "Unknown"', :tt_pageStyleClass => "Numeric NumbersOnly"} %> 
+  <%= text_field_tag "person[age_estimate]", nil, {:helpText => 'Age Estimate', :absoluteMin => 1, :absoluteMax => age_limit, :field_type => 'number', :condition => '$("person_birth_year").value == "Unknown"', :tt_onLoad => "$('nextButton').style.display = 'block';", :tt_pageStyleClass => "Numeric NumbersOnly"} %> 
 
-  <%= text_field_tag "person[birth_day]",  nil, :field_type => 'number', :helpText => 'Birth Day', :condition => '($("person_birth_year").value != "Unknown") && ($("person_birth_month").value != "Unknown")', :tt_onLoad => "getDayOfMonthPicker($('person_birth_year').value, $('person_birth_month').value)" ,:validationJS => "validateDOB()",:validationMessage => 'Please enter a valid date'%>
+  <%= text_field_tag "person[birth_day]",  nil, :field_type => 'number', :helpText => 'Birth Day', :condition => '($("person_birth_year").value != "Unknown") && ($("person_birth_month").value != "Unknown")', :tt_onLoad => "getDayOfMonthPicker($('person_birth_year').value, $('person_birth_month').value);$('nextButton').style.display = 'block';" ,:validationJS => "validateDOB()",:validationMessage => 'Please enter a valid date'%>
 
   <p><label for="region_region_name">Region of Origin</label></br>
   <%= text_field "region" , 'region_name', :xhelpText => 'Region',:tt_requireNextClick => false, :ajaxURL => '/people/region/Region?field=role&value=', :tt_onLoad => "$('nextButton').style.display = 'none';"%></p>

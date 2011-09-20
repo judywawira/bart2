@@ -8,11 +8,21 @@
     return true;
   }
 
+  function assignTBstatus() {
+      tb_status = $('tb_suspected').value;
+      if (tb_status == "YES") {
+        $('tb_status').value = "Confirmed TB NOT on treatment";
+      }
+  }
+
   function checkTBstatus() {
     try {
       tb_status = $('tb_status').value;
-      if (tb_status.length > 0)
-        return 
+      tb_suspected = $('tb_suspected').value;
+
+      if (tb_status.length == 0 && $('tb_suspected').value == 0)
+        $('tb_status').value = "Confirmed TB NOT on treatment";
+        return
     }catch(e) {}
 
     try {
@@ -65,6 +75,13 @@
       document.getElementById("appointment").removeChild($('set_tb_status'));
     }catch(e) {}
   }
+  
+  function updateTBstatys() {
+    if ($("xray").value == 'Consistent of TB'){
+        $('tb_status').value = "Confirmed TB NOT on treatment";
+        $('tb_suspected').value = "YES";   
+    }
+  }
 </script> 
 
 <form id='appointment' action="/encounters/create" method='post'>
@@ -101,37 +118,39 @@
 		reception_obs = reception.observations.map{|obs|obs.to_s.strip.upcase} rescue []
 	%>
 
-	<%= touch_yes_no_tag "Refer to x-ray?", @patient, nil,
-		{	:id => "refer_to_xray",
-			:helpText => "Refer patient to x-ray scan?" } %>
- 
-	<%= touch_yes_no_tag "interpret x-ray?", @patient, nil,
+	<%= touch_yes_no_tag "interpret x-ray?", @patient,  nil,
 		{	:id => "interpret_xray",
-			:condition => "$('refer_to_xray').value != 'YES'",
-			:helpText => "X-ray scan available for interpretation?" } %>
+			:helpText => "Is X-ray film available?" } %>
 
 	<%= touch_select_tag "Xray result interpretation", @patient, options_for_select(@select_options['tb_xray_interpretation']),
 		{	:id => "xray",
 			:tt_pageStyleClass => "NoKeyboard",
+		    :tt_onUnload => "updateTBstatys();",
 			:condition => "$('interpret_xray').value == 'YES'",
-			:helpText => "Interpret X-Ray" } %>
+			:helpText => "Interpret x-ray" } %>
 
-    <%= touch_select_tag "TB STATUS", @patient, concept_set_options('TB STATUS'),
-		{	:id => 'tb_status',
-			:optional => true,
-			:multiple => false,
-			:condition => "$('interpret_xray').value != 'YES' && $('refer_to_xray').value != 'YES'",
-			:helpText => "TB Status" } %>
+   <%= touch_yes_no_unknown_tag "TB SUSPECTED", @patient, nil,
+			{	:id => "tb_suspected",
+			    :tt_onUnload => 'assignTBstatus();',
+				:condition => "$('xray').value != 'Consistent of TB'",
+				:helpText => 'Does the patient have TB?'} %>
+				
+	<%= touch_yes_no_tag "Refer to x-ray?", @patient, nil,
+		{	:id => "refer_to_xray",
+			:condition => "$('tb_suspected').value != 'YES'",
+			:helpText => "Refer patient to x-ray?" } %>
+
+    <%= touch_hidden_tag "TB STATUS", @patient, nil, {:id => 'tb_status'} %>
 
 	<%= touch_select_tag "TB classification", @patient, options_for_select(@select_options['tb_classification']),
 		{	:id => "tb_classification",
 		 	:tt_pageStyleClass => "NoKeyboard",
-			:condition => "$('refer_to_xray').value != 'YES' && ($('xray').value == 'Consistent of TB' || $('tb_status').value == 'Confirmed TB NOT on treatment')",
+			:condition => "$('tb_suspected').value == 'YES'",
 		 	:helpText => "TB classification" } %>
 
 	<%= touch_select_tag "EPTB classification", @patient, options_for_select(@select_options['eptb_classification']),
 		{	:id => "further_tb_classification",
-		 	:condition => "$('tb_classification').value == 'Extrapulmonary tuberculosis (EPTB)' && $('refer_to_xray').value != 'YES' && ($('xray').value == 'Consistent of TB' || $('tb_status').value == 'Confirmed TB NOT on treatment')",
+			:condition => "$('tb_suspected').value == 'YES'",
 		 	:tt_pageStyleClass => "NoKeyboard",
 		 	:helpText => "EPTB classification" } %>
 
@@ -140,13 +159,20 @@
 		 	:tt_pageStyleClass => "NoKeyboard",
 		 	:tt_onUnLoad => "checkTBstatus();",
 		 	:tt_onLoad => "setAttributes();",
-			:condition => "$('refer_to_xray').value != 'YES' && ($('xray').value == 'Consistent of TB' || $('tb_status').value == 'Confirmed TB NOT on treatment')",
+			:condition => "$('tb_suspected').value == 'YES'",
 		 	:helpText => "TB type / TB susceptibility"
 		 	} %>
 
-	<%if @patient.hiv_status.upcase == 'POSITIVE' and not @patient.patient_programs.current.local.map(&:program).map(&:name).include?('HIV PROGRAM')%>
-		<%= touch_yes_no_unknown_tag "Patient enrolled in IMB HIV program", @patient, nil,
-			{	:id => "enroll_patient_in_art",
+	<%if @patient.hiv_status.upcase == 'POSITIVE' and not 
+      @patient.patient_programs.current.local.map(&:program).map(&:name).include?('HIV PROGRAM')%>
+    <%= touch_yes_no_tag "Continue treatment", @patient, nil,
+		  {	:id => "continue_treatment",
+			  :helpText => "Do you plan to continue picking up TB drugs at this clinic?" } %>
+
+		<%= touch_yes_no_unknown_tag "Patient enrolled in IMB HIV program", 
+        @patient, nil,
+			  {	:id => "enroll_patient_in_art",
+			  :condition => "$('continue_treatment').value == 'YES'",
 				:helpText => 'Enroll patient in ART'} %>
 	<%end%>
 

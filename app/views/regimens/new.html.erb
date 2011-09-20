@@ -187,6 +187,34 @@
 	}
 	return isRegistered;
   }
+  
+    function showResults(){
+        var innerHtml = '';
+        var resultString = '';
+        
+        <% if @patient.person.gender == 'F' && @patient.person.age > 14 %>
+            resultString = '<b>Pregnancy Status:</b><%=" #{@is_patient_pregnant_value}"%><br><br>'        
+        <% end %>
+        
+        
+       <% if @family_planning_methods.length != 0 %>
+                resultString += '<b>Family Planning Methods:</b><br><ul>'
+       <%        
+                family_planning_methods = @family_planning_methods.sort.map do |method|
+                                    "<li> #{method}</li>"
+                end 
+            end
+        %>
+
+        resultString += <%= "'#{family_planning_methods}'" %>
+        resultString += '</ul>'
+
+        innerHtml = '<div id="summary" style="min-height:400px"><div>' + 
+        '<span class="title" style="font-size:25px;padding-top:7px;">' + resultString + '</span>' +  
+        '</div></div>'
+                     
+        $('inputFrame'+tstCurrentPage).innerHTML = innerHtml
+    }
 
 </script>
 <form id='regimen_form' action="/regimens/create" method='post'>
@@ -194,6 +222,14 @@
   <%= hidden_field_tag :patient_id, @patient.id %>
 
 	<!-- TB regimen -->
+    <% if (@family_planning_methods.length != 0) || ( @patient.person.gender == 'F' && @patient.person.age > 14 ) %>
+            <%= text_field_tag :task_name, nil,
+                {   :tt_onLoad => "showResults();",
+                    :optional => "true",
+                    :tt_pageStyleClass => "NoControls",
+                    :helpText => '' } %>
+    <% end %>
+	
   <%= touch_yes_no_tag "Prescribe drugs", @patient, nil,
       {:optional => false,
        :id => 'prescribe_tb_drugs',
@@ -327,7 +363,7 @@
 	  <%= touch_numeric_tag "CONDOMS", @patient, nil,
 		{	:optional => false,
 			:condition => 'hasARTVisit() == true;',
-			:helpText => "Number of Condoms given" 
+			:helpText => "Number of condoms given" 
 		} %>
 
  <% end %>

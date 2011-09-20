@@ -103,8 +103,13 @@
 
  <%= touch_hidden_tag "HIV TEST DATE", @patient, nil, {:id => "hiv_test_date", :value_datetime => true}%>
 
-     <%= submit_tag "Finish" %>    
+<%= touch_yes_no_unknown_tag "Refer to HTC", @patient, nil,
+   {:id => "refer_to_htc",
+    :condition => '$("hiv_status").value == "NEGATIVE" && updateTestDate() == true',
+    :tt_pageStyleClass => "NoKeyboard",
+    :helpText => "Patient has been -ve for more than 3 months. Refer patient to HTC?" } %>
 
+<%= submit_tag "Finish" %>    
    </form>
 
 <div id='hivTestReminder' class='messageBar' style='display:none'>

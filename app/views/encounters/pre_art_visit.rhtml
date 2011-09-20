@@ -128,11 +128,11 @@
      :helpText => "What method?" } %>
   <%end%>
 
-  <% if @patient.person.age >= 14 %>
-    <%= touch_numeric_tag "CONDOMS", @patient, nil,
+  <%# if @patient.person.age >= 14 %>
+    <%#= touch_numeric_tag "CONDOMS", @patient, nil,
       {:optional => false,
-       :helpText => "Number of Condoms given" } %>
-  <% end %>
+       :helpText => "Number of condoms given" } %>
+  <%# end %>
 
   <%= touch_yes_no_unknown_tag "Prescribe ARVs this visit", @patient, nil,
     {:optional => false,

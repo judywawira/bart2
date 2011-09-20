@@ -89,7 +89,7 @@
   function summary() {
     results = '<ul>';
     for(i = 0 ; i < result_filed_ids.length ; i++) {
-      if ($(result_filed_ids[i]).value != 'TB NOT suspected') {
+      if ($(result_filed_ids[i]).value != 'NEGATIVE') {
         tb_status =  'Confirmed TB NOT on treatment'
       }
       var specimen = $(specimen_field_ids[i]).value

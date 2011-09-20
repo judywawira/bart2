@@ -213,7 +213,7 @@ class ClinicController < ApplicationController
   def lab_tab
     #only applicable in the sputum submission area
     enc_date = session[:datetime].to_date rescue Date.today
-    @types = ['LAB ORDERS', 'SPUTUM SUBMISSION', 'LAB RESULTS']
+    @types = ['LAB ORDERS', 'SPUTUM SUBMISSION', 'LAB RESULTS', 'GIVE LAB RESULTS']
     @me = Encounter.statistics(@types, :conditions => ['DATE(encounter_datetime) = ? AND encounter.creator = ?', enc_date, User.current_user.user_id])
     @today = Encounter.statistics(@types, :conditions => ['DATE(encounter_datetime) = ?', enc_date])
     @user = User.find(session[:user_id]).name rescue ""
