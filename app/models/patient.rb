@@ -563,8 +563,7 @@ class Patient < ActiveRecord::Base
   end
 
   def arv_number
-    arv_number_id = PatientIdentifierType['ARV Number'].id
-    PatientIdentifier.identifier(self.patient_id, arv_number_id).try(:identifier)
+    self.patient_identifiers.typed('ARV Number').first.try(:identifier)
   end
 
   def age_at_initiation(initiation_date = nil)
@@ -1007,7 +1006,7 @@ EOF
     case params[:field]
     when 'arv_number'
       type = params['identifiers'][0]['identifier_type']
-      patient_identifiers = self.patient_identifiers.all(:conditions => {:identifier_type => type.to_i})
+      patient_identifiers = patient.patient_identifiers.all(:conditions => {:identifier_type => type.to_i})
 
       patient_identifiers.each do |identifier|
         identifier.void('given another number')

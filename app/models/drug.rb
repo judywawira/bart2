@@ -1,18 +1,22 @@
 class Drug < ActiveRecord::Base
-  set_table_name :drug
-  set_primary_key :drug_id
+  set_table_name 'drug'
+  set_primary_key 'drug_id'
+
   include Openmrs
-  belongs_to :concept, :conditions => {:retired => 0}
-  belongs_to :form, :foreign_key => 'dosage_form', :class_name => 'Concept', :conditions => {:retired => 0}
+
+  belongs_to :concept,
+      :conditions => {:retired => 0}
+  belongs_to :form,
+      :foreign_key => 'dosage_form',
+      :class_name  => 'Concept',
+      :conditions  => {:retired => 0}
   
   def arv?
-    Drug.arv_drugs.map(&:concept_id).include?(self.concept_id)
+    self.class.arv_drugs.map(&:concept_id).include?(self.concept_id)
   end
 
   def self.arv_drugs
-    arv_concept       = ConceptName.find_by_name("ANTIRETROVIRAL DRUGS").concept_id
-    arv_drug_concepts = ConceptSet.all(:conditions => ['concept_set = ?', arv_concept])
-    arv_drug_concepts
+    ConceptSet.named('ANTIRETROVIRAL DRUGS').all
   end
   
   def tb_medication?
@@ -20,44 +24,47 @@ class Drug < ActiveRecord::Base
   end
   
   def self.tb_drugs
-    tb_medication_concept       = ConceptName.find_by_name("Tuberculosis treatment drugs").concept_id
-    tb_medication_drug_concepts = ConceptSet.all(:conditions => ['concept_set = ?', tb_medication_concept])
-    tb_medication_drug_concepts
+    ConceptSet.named('Tuberculosis treatment drugs').all
   end
 
-  # Need to make this a lot more generic	
+  # Need to make this a lot more generic
+  # FIXME: ever thought about how inefficient this method is?!
   # This method gets all generic drugs in the database
   def self.generic
     generics = []
-    preferred = ConceptName.find_by_name("Maternity Prescriptions").concept.concept_members.collect{|c| c.concept_id} rescue []
-    self.all.each{|drug|
-      Concept.find(drug.concept_id, :conditions => ["retired = 0 AND concept_id IN (?)", preferred]).concept_names.each{|conceptname|
+    preferred = Concept.named('Maternity Prescriptions').concept_members.collect(&:concept_id) rescue []
+    self.all.each do |drug|
+    # FIXME: exception driven flow control
+      Concept.find(drug.concept_id, :conditions => {:retired => false, :concept_id => preferred}).concept_names.each do |conceptname|
         generics << [conceptname.name, drug.concept_id] rescue nil
-      }.compact.uniq rescue []
-    }
+      end.compact.uniq rescue []
+    end
     generics.uniq
   end
 
-  # For a selected generic drug, this method gets all corresponding drug
-  # combinations
+  # For a selected generic drug, this method gets all corresponding drug combinations
   def self.drugs(generic_drug_concept_id)
     frequencies = ConceptName.drug_frequency
     collection = []
 
-    self.find(:all, :conditions => ["concept_id = ?", generic_drug_concept_id]).each {|d|
-      frequencies.each {|freq|
+    # FIXME: exception driven flow control
+    self.all(:conditions => {:concept_id => generic_drug_concept_id}).each do |d|
+      frequencies.each do |freq|
         collection << ["#{d.dose_strength.to_i rescue 1}#{d.units.upcase rescue ""}", "#{freq}"]
-      }
-    }.uniq.compact rescue []
+      end
+    end.uniq.compact rescue []
 
     collection.uniq
   end
 
   def self.dosages(generic_drug_concept_id)
+    # FIXME: exception driven flow control
 
-    self.find(:all, :conditions => ["concept_id = ?", generic_drug_concept_id]).collect {|d|
-      ["#{d.dose_strength.to_i rescue 1}#{d.units.upcase rescue ""}", "#{d.dose_strength.to_i rescue 1}", "#{d.units.upcase rescue ""}"]
-    }.uniq.compact rescue []
+    self.all(:conditions => {:concept_id => generic_drug_concept_id}).collect do |d|
+      [ "#{(d.dose_strength||1).to_i}#{(d.units||'').upcase}",
+        "#{(d.dose_strength||1).to_i}",
+        "#{(d.units||'').upcase}" ]
+    end.uniq.compact
 
   end
 

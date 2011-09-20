@@ -73,14 +73,14 @@ class Person < ActiveRecord::Base
 
     # If the birthdate was estimated this year, we round up the age, that way if
     # it is March and the patient says they are 25, they stay 25 (not become 24)
-    birth_date=self.birthdate
-    estimate=self.birthdate_estimated==1
+    birth_date = self.birthdate
+    estimate   = self.birthdate_estimated==1
     patient_age += (estimate && birth_date.month == 7 && birth_date.day == 1  && 
       today.month < birth_date.month && self.date_created.year == today.year) ? 1 : 0
   end
 
   def age_in_months(today = Date.today)
-    years = (today.year - self.birthdate.year)
+    years  = (today.year  - self.birthdate.year)
     months = (today.month - self.birthdate.month)
     (years * 12) + months
   end
@@ -125,6 +125,10 @@ class Person < ActiveRecord::Base
   end
 
   def demographics
+    
+  end
+
+  def demographics_from_local_db
     if self.birthdate_estimated == 1
       birth_day = 'Unknown'
       if self.birthdate.month == 7 and self.birthdate.day == 1
@@ -136,42 +140,46 @@ class Person < ActiveRecord::Base
       birth_month = self.birthdate.try :month
       birth_day   = self.birthdate.try :day
     end
+    birth_year = self.birthdate.try :year
+    name       = self.names.first
 
-    name = self.names.first
-
-    demographics = {
+    demographics_data = {
       'person' => {
-        'date_changed'  => self.date_changed.to_s,
-        'gender'        => self.gender,
-        'birth_year'    => self.birthdate.try(:year),
-        'birth_month'   => birth_month,
-        'birth_day'     => birth_day,
-        'names'         => {
+        'gender' => self.gender,
+        'birth_date'   => {
+          'day'      => birth_date,
+          'month'    => birth_month,
+          'year'     => birth_year,
+        },
+        'birthdate_estimated' => 0, # FIXME
+        'names' => {
           'given_name'   => name.given_name,
           'family_name'  => name.family_name,
           'family_name2' => name.family_name2
         },
-        'addresses'     => {
+        'addresses'    => [{
           'address1'        => self.current_address.address1,
           'address2'        => self.current_address.address2,
           'city_village'    => self.current_address.city_village,
-          'county_district' => self.current_address.county_district
+          'county_district' => self.current_address.county_district,
+        }],
+        'attributes'   => {
+          'occupation'          => self.get_attribute('Occupation'),
+          'cell_phone_number'   => self.get_attribute('Cell Phone Number'),
+          'home_phone_number'   => self.get_attribute('Home Phone Number'),
+          'office_phone_number' => self.get_attribute('Office Phone Number')
         },
-        'attributes'    => {
-          'occupation'        => self.get_attribute('Occupation'),
-          'cell_phone_number' => self.get_attribute('Cell Phone Number')
-        }
-        'identifiers'   => {}
+        'identifiers' => {}
       }
     }
  
-    unless self.patient.try(:patient_identifiers).blank?
+    if self.patient.patient_identifiers.any?
       self.patient.patient_identifiers.each do |identifier|
-        demographics['person']['identifiers'][identifier.type.name] = identifier.identifier
+        demographics_data['person']['identifiers'][identifier.type.name] = identifier.identifier
       end
     end
 
-    return demographics
+    return demographics_data
   end
 
   def self.occupations
@@ -183,7 +191,7 @@ class Person < ActiveRecord::Base
   def self.search_by_identifier(identifier)
     unless identifier.blank?
       self.all(:include    => {:patient => :patient_identifier},
-               :conditions => {'identifierpatient_identifiers.value' => identifier})
+               :conditions => {'patient_identifier.value' => identifier})
     end
   end
 
@@ -308,17 +316,22 @@ class Person < ActiveRecord::Base
   end
 
   def get_attribute(attr_name)
-    self.person_attributes.first(:conditions => {:person_attribute_type_id => PersonAttributeType[attr_name].id}).try(:value)
+    get_attribute_object(attr_name).try(:value)
+  end
+
+  def get_attribute_object(attr_name)
+    self.person_attributes.first(:conditions => {:person_attribute_type_id => PersonAttributeType[attr_name].id})
   end
 
   def set_attribute(attr_name, value)
-    attribute = self.get_attribute('Occupation')
-    if attribute
+    existing_person_attribute = self.get_attribute_object('Occupation')
+    if existing_person_attribute
       existing_person_attribute.update_attributes(:value => value.to_s)
     else
       type_id = PersonAttributeType[attr_name].id
       self.person_attributes.create(:person_attribute_type_id => type_id, :value => value.to_s)
     end
+    value
   end
 
   def sex

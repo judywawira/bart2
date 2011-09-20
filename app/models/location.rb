@@ -1,9 +1,15 @@
 class Location < ActiveRecord::Base
-  set_table_name "location"
-  set_primary_key "location_id"
+  set_table_name 'location'
+  set_primary_key 'location_id'
+
   include Openmrs
 
   cattr_accessor :current_location
+
+  named_scope :workstations,
+      :joins      => 'JOIN location_tag_map ON location.location_id = location_tag_map.location_id JOIN location_tag ON location_tag.location_tag_id = location_tag_map.location_tag_id',
+      :conditions => {'location_tag.name' => 'Workstation Location'}),
+      :order      => 'location.name ASC'
 
   def site_id
     Location.current_health_center.location_id.to_s
@@ -61,7 +67,7 @@ class Location < ActiveRecord::Base
   end
 
   def self.current_health_center
-    @@current_health_center ||= Location.find(GlobalProperty.find_by_property("current_health_center_id").property_value) rescue self.current_location
+    @@current_health_center ||= Location.find(GlobalProperty['current_health_center_id']) rescue self.current_location
   end
 
   def self.current_arv_code
@@ -75,48 +81,23 @@ class Location < ActiveRecord::Base
     label.font_horizontal_multiplier = 2
     label.font_vertical_multiplier = 2
     label.left_margin = 50
-    label.draw_barcode(50,180,0,1,5,15,120,false,"#{self.location_id}")
+    label.draw_barcode(50, 180, 0, 1, 5, 15, 120, false, "#{self.location_id}")
     label.draw_multi_text("#{self.name}")
     label.print(1)
   end
 
   def self.workstation_locations
-      field_name = "name"
-
-      sql = "SELECT *
-             FROM location
-             WHERE location_id IN (SELECT location_id
-                          FROM location_tag_map
-                          WHERE location_tag_id = (SELECT location_tag_id
-                                 FROM location_tag
-                                 WHERE name = 'Workstation Location'))
-             ORDER BY name ASC"
-
-      Location.find_by_sql(sql).collect{|name| name.send(field_name)} rescue []
+    self.workstations.collect(&:name)
   end
 
   def self.search(search_string, act)
-      field_name = "name"
-      if act == "delete"  || act == "print" then
-          sql = "SELECT *
-                 FROM location
-                 WHERE location_id IN (SELECT location_id
-                              FROM location_tag_map
-                              WHERE location_tag_id = (SELECT location_tag_id
-	                                   FROM location_tag
-	                                   WHERE name = 'Workstation Location'))
-                 ORDER BY name ASC"
-      elsif act == "create" then
-          sql = "SELECT *
-                 FROM location
-                 WHERE location_id NOT IN (SELECT location_id
-                              FROM location_tag_map
-                              WHERE location_tag_id = (SELECT location_tag_id
-	                                   FROM location_tag
-	                                   WHERE name = 'Workstation Location'))  AND name LIKE '%#{search_string}%'
-                 ORDER BY name ASC"
-      end
-      self.find_by_sql(sql).collect{|name| name.send(field_name)}
+    case act
+    when 'delete', 'print'
+      conditions = {}
+    when 'create'
+      conditions = [%q(name LIKE ?), "%#{search_string}%"]
+    end
+    self.workstations.all(:conditions => conditions).collect(&:name)
   end
 
 end

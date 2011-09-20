@@ -22,7 +22,7 @@ class Concept < ActiveRecord::Base
   has_many :concept_answers do # no default scope
     def limit(search_string)
       return self if search_string.blank?
-      reject{|concept_answer| not concept_answer.name.match(search_string) }
+      reject {|concept_answer| not concept_answer.name.match(search_string) }
     end
   end
 
@@ -33,20 +33,18 @@ class Concept < ActiveRecord::Base
       :foreign_key => :concept_set
 
   def self.find_by_name(concept_name)
-    self.first(:joins      => 'INNER JOIN concept_name on concept_name.concept_id = concept.concept_id',
+    self.first(:include    => :concept_names,
                :conditions => {'concept.retired' => 0, 'concept_name.voided' => 0, 'concept_name.name' => concept_name})
   end
 
   def shortname
     name = self.concept_names.typed('SHORT').first.name
-    return name unless name.blank?
-    return self.concept_names.first.name rescue nil
+    name.blank? ? self.concept_names.first.try(:name) : name
   end
 
   def fullname
     name = self.concept_names.typed('FULLY_SPECIFIED').first.name
-    return name unless name.blank?
-    return self.concept_names.first.name rescue nil
+    name.blank? ? self.concept_names.first.try(:name) : name
   end
 
   def self.[](key)

@@ -14,7 +14,7 @@ class PatientIdentifier < ActiveRecord::Base
       :conditions  => {:voided => 0}
 
   named_scope :typed,
-      lambda{|type_name| {:include => :type, :conditions => {'patient_identifier_type.name' => type_name}} }
+      lambda{|*type_names| {:include => :type, :conditions => {'patient_identifier_type.name' => type_names.flatten}} }
 
   def self.calculate_checkdigit(number)
     # This is Luhn's algorithm for checksums
@@ -63,6 +63,7 @@ class PatientIdentifier < ActiveRecord::Base
     return "#{current_arv_code} #{next_available_number}"
   end
 
+  # FIXME: remove this method and place its logic where it belongs -- in the patient model
   def self.identifier(patient_id, patient_identifier_type_id)
     self.first(:select      => 'identifier',
                :conditions  =>['patient_id = ? and identifier_type = ?', patient_id, patient_identifier_type_id])
