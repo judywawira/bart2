@@ -230,12 +230,17 @@
                     @person.id, ConceptName.find_by_name("Refer to x-ray?").concept_id,  
                     ])).to_s.strip.squish.upcase rescue '' 
         %>
-        <th>Next task</th><td><%= next_task %></td>
+        <th>Next task</th>
+        <td><%= next_task %></td>
         <% if xray.match(/: Yes/i) %>
-        <th style="float:right;"><%='&nbsp;'*45%>Xray details available?</th>
-        <td><span style="float:right;">
-          <a href="javascript:submitPage('<%=@person.id%>')">YES</a></span>
-        </td>
+          <th style="float:right;">
+            <%='&nbsp;' * 45 %>Xray details available?
+          </th>
+          <td>
+            <span style="float:right;">
+              <a href="javascript:submitPage('<%=@person.id%>')">YES</a>
+            </span>
+          </td>
         <% end %>
       </tr>
     </table>
@@ -255,7 +260,7 @@
 <div id="messageBar" class="messageBar">
   Patient files in archive cabinets <br /> Move to active cabinets?
   <br /><br />
-  <button onmousedown="hideMessage();go();"><span>No</span></button>&nbsp;
-  <button onmousedown="hideMessage();setNewFilingNumber();"><span>Yes</span></button>
+  <button onmousedown="hideMessage(); go();"><span>No</span></button>&nbsp;
+  <button onmousedown="hideMessage(); setNewFilingNumber();"><span>Yes</span></button>
 </div>
 </body>

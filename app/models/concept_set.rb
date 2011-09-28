@@ -11,8 +11,8 @@ class ConceptSet < ActiveRecord::Base
       :conditions => {:retired => 0}
 
   named_scope :named, lambda {|concept_name|
-    { :include    => {:concept => :concept_name},
-      :conditions => {'concept_name.name' => concept_name}}
+    { :include    => {:concept => :concept_names},
+      :conditions => {:concept_name => {:name => concept_name}}}
   }
 
 end

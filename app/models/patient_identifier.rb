@@ -14,7 +14,7 @@ class PatientIdentifier < ActiveRecord::Base
       :conditions  => {:voided => 0}
 
   named_scope :typed,
-      lambda{|*type_names| {:include => :type, :conditions => {'patient_identifier_type.name' => type_names.flatten}} }
+      lambda{|*type_names| {:include => :type, :conditions => {:patient_identifier_type => {:name => type_names.flatten}}}}
 
   def self.calculate_checkdigit(number)
     # This is Luhn's algorithm for checksums
@@ -42,8 +42,7 @@ class PatientIdentifier < ActiveRecord::Base
 
   def self.next_available_arv_number
     current_arv_code = self.site_prefix
-    type = PatientIdentifierType.find_by_name('ARV Number').id
-    current_arv_number_identifiers = PatientIdentifier.all(:conditions => ['identifier_type = ? AND voided = 0', type])
+    current_arv_number_identifiers = PatientIdentifier.typed('ARV Number').all(:conditions => {:voided => 0})
 
     assigned_arv_ids = (current_arv_number_identifiers || []).collect do |identifier|
       $1.to_i if identifier.identifier.match(/#{current_arv_code} *(\d+)/)
@@ -55,8 +54,9 @@ class PatientIdentifier < ActiveRecord::Base
       # Check for unused ARV idsV
       # Suggest the next arv_id based on unused ARV ids that are within 10 of the current_highest arv id. This makes sure that we don't get holes unless we   really want them and also means that our suggestions aren't broken by holes
       #array_of_unused_arv_ids = (1..highest_arv_id).to_a - assigned_arv_ids
+      # FIXME: YOU ARE NOT SERIOUSLY CHECKING 100'000 NUMBERS IN RUBY CODE HERE?! => LET THE DATABASE DO THAT!
       assigned_numbers      = assigned_arv_ids.sort
-      possible_number_range = GlobalProperty['arv_number_range', 100000].to_i
+      possible_number_range = GlobalProperty['arv_number_range', 100_000].to_i
       possible_identifiers  = Array.new(possible_number_range){|i| i + 1 }
       next_available_number = (possible_identifiers - assigned_numbers).first
     end
@@ -112,7 +112,8 @@ class PatientIdentifier < ActiveRecord::Base
       len_of_identifier = (filing_number_prefix.split(',')[1][-1..-1] + '00000').to_i
     end
 
-    possible_identifiers_range = GlobalProperty['filing.number.range', 300000].to_i
+    # FIXME: MANUALLY CHECHKING 300'000 NUMBERS AGAIN... LET THE DATABASE DO THAT!
+    possible_identifiers_range = GlobalProperty['filing.number.range', 300_000].to_i
     possible_identifiers       = Array.new(possible_identifiers_range){|i| prefix + (len_of_identifier + i + 1).to_s }
 
     (possible_identifiers - available_numbers.compact.uniq).first

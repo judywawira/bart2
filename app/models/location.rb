@@ -8,7 +8,7 @@ class Location < ActiveRecord::Base
 
   named_scope :workstations,
       :joins      => 'JOIN location_tag_map ON location.location_id = location_tag_map.location_id JOIN location_tag ON location_tag.location_tag_id = location_tag_map.location_tag_id',
-      :conditions => {'location_tag.name' => 'Workstation Location'}),
+      :conditions => {'location_tag.name' => 'Workstation Location'},
       :order      => 'location.name ASC'
 
   def site_id

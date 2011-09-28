@@ -38,9 +38,10 @@ class Observation < ActiveRecord::Base
   def validate
     if value_numeric != '0.0' and value_numeric != '0' and not value_numeric.blank?
       value_numeric = value_numeric.to_f
-      #TODO
-      #value_numeric = nil if value_numeric == 0.0
+      # TODO
+      # value_numeric = nil if value_numeric == 0.0
     end
+
     if [value_numeric, value_boolean, value_coded, value_drug, value_datetime, value_modifier, value_text].all? &:blank?
       errors.add_to_base('Value cannot be blank')
     end
@@ -52,8 +53,8 @@ class Observation < ActiveRecord::Base
   
   def concept_name=(concept_name)
     self.concept_id = ConceptName.find_by_name(concept_name).concept_id
-    rescue
-      raise "\"#{concept_name}\" does not exist in the concept_name table"
+  rescue
+    raise %Q("#{concept_name}" does not exist in the concept_name table)
   end
 
   def value_coded_or_text=(value_coded_or_text)

@@ -29,6 +29,12 @@ class Patient < ActiveRecord::Base
     end
   end
 
+  def self.find_by_national_id(id)
+    PatientIdentifier.typed('National Id').find_by_identifier(id).try(:patient)
+    self.first :include => {:patient_identifiers => :type},
+        :conditions => {:patient_identifier => {:identifier => id}, :patient_identifier_type => {:name => 'National Id'}}
+  end
+
   def after_void(reason = nil)
     self.person.void(reason) rescue nil
     self.patient_identifiers.each {|row| row.void(reason) }
@@ -55,17 +61,17 @@ class Patient < ActiveRecord::Base
   def current_dispensation_encounter(date = Time.now())
     type      = EncounterType['DISPENSING']
     encounter = self.encounters.find(:first, :conditions =>['DATE(encounter_datetime) = ? AND encounter_type = ?',date.to_date,type.id])
-    encounter ||= self.encounters.create(:encounter_type => type.id,:encounter_datetime => date)
+    encounter ||= self.encounters.create(:encounter_type => type.id, :encounter_datetime => date)
   end
 
   # Get the any BMI-related alert for this patient
   def current_bmi_alert
     weight = self.current_weight
     height = self.current_height
-    alert = nil
-    unless weight == 0 || height == 0
-      current_bmi = (weight/(height*height)*10000).round(1);
-      if current_bmi <= 18.5 && current_bmi > 17.0
+    alert  = nil
+    unless weight == 0 or height == 0
+      current_bmi = (weight / (height * height) * 10000).round(1);
+      if (17.0..18.5).include? current_bmi
         alert = 'Low BMI: Eligible for counseling'
       elsif current_bmi <= 17.0
         alert = 'Low BMI: Eligible for therapeutic feeding'

@@ -69,16 +69,14 @@ class PeopleController < ApplicationController
     found_person = nil
 
     if params[:identifier]
-      local_results = Person.search_by_identifier(params[:identifier])
-      if local_results.length > 1
-        @people = Person.search(params)
-      elsif local_results.length == 1
-        found_person = local_results.first
-      else
-        # TODO - figure out how to write a test for this
-        # This is sloppy - creating something as the result of a GET
+#       local_results = Person.search_by_identifier(params[:identifier]) # XXX wvk
+#       if local_results.length > 1
+#         @people = Person.search(params)
+#       elsif local_results.length == 1
+#         found_person = local_results.first
+#       else
         found_person = Person.find_remote_by_identifier(params[:identifier].split(' ').last)
-      end
+#       end
 
       if found_person
         #redirect_to search_complete_url(found_person.id, params[:relation]) and return

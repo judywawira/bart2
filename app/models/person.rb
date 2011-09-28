@@ -1,3 +1,13 @@
+module AssociationCreateOrUpdate
+  def create_or_update(attrs)
+    if proxy_target.any?
+      proxy_target.first.update_attributes(attrs)
+    else
+      proxy_reflection.build_association(attrs)
+    end
+  end
+end
+
 class Person < ActiveRecord::Base
   set_table_name 'person'
   set_primary_key 'person_id'
@@ -14,26 +24,33 @@ class Person < ActiveRecord::Base
       :foreign_key => :patient_id,
       :dependent   => :destroy,
       :conditions  => {:voided => 0}
+
   has_many :names,
       :class_name  => 'PersonName',
       :foreign_key => :person_id,
       :dependent   => :destroy,
       :order       => 'person_name.preferred DESC',
-      :conditions  => {:voided => 0}
+      :conditions  => {:voided => 0},
+      :extend      => AssociationCreateOrUpdate
+
   has_many :addresses,
       :class_name  => 'PersonAddress',
       :foreign_key => :person_id,
       :dependent   => :destroy,
       :order       => 'person_address.preferred DESC',
-      :conditions  => {:voided => 0}
+      :conditions  => {:voided => 0},
+      :extend      => AssociationCreateOrUpdate
+
   has_many :relationships,
       :class_name  => 'Relationship',
       :foreign_key => :person_a,
       :conditions  => {:voided => 0}
+
   has_many :person_attributes,
       :class_name  => 'PersonAttribute',
       :foreign_key => :person_id,
       :conditions  => {:voided => 0}
+
   has_many :observations,
       :class_name  => 'Observation',
       :foreign_key => :person_id,
@@ -58,7 +75,7 @@ class Person < ActiveRecord::Base
   end  
 
   def address
-    "#{self.addresses.first.city_village}"  rescue nil
+    "#{self.addresses.first.city_village}" rescue nil
   end
 
   def current_address
@@ -74,7 +91,7 @@ class Person < ActiveRecord::Base
     # If the birthdate was estimated this year, we round up the age, that way if
     # it is March and the patient says they are 25, they stay 25 (not become 24)
     birth_date = self.birthdate
-    estimate   = self.birthdate_estimated==1
+    estimate   = self.birthdate_estimated == 1
     patient_age += (estimate && birth_date.month == 7 && birth_date.day == 1  && 
       today.month < birth_date.month && self.date_created.year == today.year) ? 1 : 0
   end
@@ -97,6 +114,28 @@ class Person < ActiveRecord::Base
     else
       self.birthdate.strftime('%d/%b/%Y')
     end
+  end
+
+  def birthdate_to_params
+    date = {}
+    if self.birthdate_estimated == 1
+      date['day'] = 'Unknown'
+      if self.birthdate.month == 7 and self.birthdate.day == 1
+        date['month'] = 'Unknown'
+      else
+        date['month'] = self.birthdate.month
+      end
+    else
+      date['month'] = self.birthdate.month
+      date['day']   = self.birthdate.day
+    end
+    date['year'] = self.birthdate.year
+
+    return date
+  end
+
+  def birthdate_from_params=(hash)
+    self.set_birthdate *hash.values_at('year', 'month', 'day')
   end
 
   def set_birthdate(year = nil, month = nil, day = nil)
@@ -125,32 +164,21 @@ class Person < ActiveRecord::Base
   end
 
   def demographics
-    
+    # make sure to fetch the latest demopgraphics from the server
+    self.class.find_remote_by_identifier(self.national_id)
+    # and return the updated demographics
+    return self.demographics_from_local_db
   end
 
   def demographics_from_local_db
-    if self.birthdate_estimated == 1
-      birth_day = 'Unknown'
-      if self.birthdate.month == 7 and self.birthdate.day == 1
-        birth_month = 'Unknown'
-      else
-        birth_month = self.birthdate.month
-      end
-    else
-      birth_month = self.birthdate.try :month
-      birth_day   = self.birthdate.try :day
-    end
-    birth_year = self.birthdate.try :year
-    name       = self.names.first
+    return @demographics if @demographics
 
-    demographics_data = {
+    name = self.names.first
+
+    @demographics = {
       'person' => {
-        'gender' => self.gender,
-        'birth_date'   => {
-          'day'      => birth_date,
-          'month'    => birth_month,
-          'year'     => birth_year,
-        },
+        'gender'     => self.gender,
+        'birth_date' => self.birthdate_to_params,
         'birthdate_estimated' => 0, # FIXME
         'names' => {
           'given_name'   => name.given_name,
@@ -169,17 +197,15 @@ class Person < ActiveRecord::Base
           'home_phone_number'   => self.get_attribute('Home Phone Number'),
           'office_phone_number' => self.get_attribute('Office Phone Number')
         },
-        'identifiers' => {}
+        'identifiers' => self.identifiers
       }
     }
- 
-    if self.patient.patient_identifiers.any?
-      self.patient.patient_identifiers.each do |identifier|
-        demographics['person']['identifiers'][identifier.type.name] = identifier.identifier
-      end
-    end
+  end
 
-    return demographics_data
+  def self.identifiers
+    self.patient.patient_identifiers.inject({}) do |mem, identifier|
+      mem[identifier.type.name] = identifier.identifier
+    end
   end
 
   def self.occupations
@@ -188,130 +214,46 @@ class Person < ActiveRecord::Base
       'Prisoner', 'Craftsman', 'Healthcare Worker', 'Soldier'].sort + ['Other', 'Unknown']
   end
 
+  # returns all users that have any identifier that matches the given value
   def self.search_by_identifier(identifier)
     unless identifier.blank?
-      self.all(:include    => {:patient => :patient_identifier},
-               :conditions => {'patient_identifier.value' => identifier})
+      self.all(:include    => {:patient => :patient_identifiers},
+               :conditions => {:patient_identifier => {:identifier => identifier}})
     end
   end
 
+  # returns all users that match the given set of demographics data
+  # the first search only uses the identifier(s) and if no results are found,
+  # the second search includes gender, given and family name (literal and soundex)
   def self.search(params)
-    people = Person.search_by_identifier(params[:identifier]) || []
+    people = self.search_by_identifier(params[:identifier]) || []
 
     case people.size
-    when 1
-      people.first.id
     when 0
-      Person.all(:include => [{:names => :person_name_code}, :patient],
-                 :conditions => ['gender = ? AND
-                  (person_name.given_name LIKE ? OR person_name_code.given_name_code LIKE ?) AND
-                  (person_name.family_name LIKE ? OR person_name_code.family_name_code LIKE ?)',
-                  params[:gender], params[:given_name], (params[:given_name] || '').soundex,
-                  params[:family_name], (params[:family_name] || '').soundex])
+      self.all(:include    => [{:names => :person_name_code}, :patient],
+               :conditions => ['gender = ? AND
+               (person_name.given_name  LIKE ? OR person_name_code.given_name_code  LIKE ?) AND
+               (person_name.family_name LIKE ? OR person_name_code.family_name_code LIKE ?)',
+                params[:gender], params[:given_name], (params[:given_name] || '').soundex,
+                params[:family_name], (params[:family_name] || '').soundex])
     else
       people
     end
-
-    # temp removed
-    # AND (person_name.family_name2 LIKE ? OR person_name_code.family_name2_code LIKE ? OR person_name.family_name2 IS NULL )"    
-    #  params[:family_name2],
-    #  (params[:family_name2] || '').soundex,
-
-# CODE below is TODO, untested and NOT IN USE
-#    people = []
-#    people = PatientIdentifier.find_all_by_identifier(params[:identifier]).map{|id| id.patient.person} unless params[:identifier].blank?
-#    if people.size == 1
-#      return people
-#    elsif people.size >2
-#      filtered_by_family_name_and_gender = []
-#      filtered_by_family_name = []
-#      filtered_by_gender = []
-#      people.each{|person|
-#        gender_match = person.gender == params[:gender] unless params[:gender].blank?
-#        filtered_by_gender.push person if gender_match
-#        family_name_match = person.first.names.collect{|name|name.family_name.soundex}.include? params[:family_name].soundex
-#        filtered_by_family_name.push person if gender_match?
-#        filtered_by_family_name_and_gender.push person if family_name_match? and gender_match?
-#      }
-#      return filtered_by_family_name_and_gender unless filtered_by_family_name_and_gender.empty?
-#      return filtered_by_family_name unless filtered_by_family_name.empty?
-#      return filtered_by_gender unless filtered_by_gender.empty?
-#      return people
-#    else
-#    return people if people.size == 1
-#    people = Person.find(:all, :include => [{:names => [:person_name_code]}, :patient], :conditions => [
-#    "gender = ? AND \
-#     (person_name.given_name LIKE ? OR person_name_code.given_name_code LIKE ?) AND \
-#     (person_name.family_name LIKE ? OR person_name_code.family_name_code LIKE ?)",
-#    params[:gender],
-#    params[:given_name],
-#    (params[:given_name] || '').soundex,
-#    params[:family_name],
-#    (params[:family_name] || '').soundex
-#    ]) if people.blank?
-#    
-    # temp removed
-    # AND (person_name.family_name2 LIKE ? OR person_name_code.family_name2_code LIKE ? OR person_name.family_name2 IS NULL )"    
-    #  params[:family_name2],
-    #  (params[:family_name2] || '').soundex,
-
   end
 
   def self.find_by_demographics(demographics)
     person_demographics = demographics['person']
     national_id = person_demographics['identifiers']['National id'] rescue nil
-    results     = Person.search_by_identifier(national_id) unless national_id.nil?
-    unless results.blank?
+    results     = self.search_by_identifier(national_id) unless national_id.nil?
+    if results.any?
       return results
     else
       gender      = person_demographics['gender'] || nil
-      given_name  = person_demographics['names']['given_name'] rescue nil
+      given_name  = person_demographics['names']['given_name']  rescue nil
       family_name = person_demographics['names']['family_name'] rescue nil
 
       search_params = {:gender => gender, :given_name => given_name, :family_name => family_name}
-      results       = Person.search(search_params)
-
-=begin
-    national_id = person_demographics["person"]["patient"]["identifiers"]["National id"] rescue nil
-    person = Person.search_by_identifier(national_id) unless national_id.nil?
-    return {} if person.blank? 
-
-    #person_demographics = person.demographics
-    results = {}
-    result_hash = {}
-    gender = person_demographics["person"]["gender"] rescue nil
-    given_name = person_demographics["person"]["names"]["given_name"] rescue nil
-    family_name = person_demographics["person"]["names"]["family_name"] rescue nil
-   # raise"#{gender}"
-    result_hash = {
-      "gender" =>  person_demographics["person"]["gender"],
-      "names" => {"given_name" =>  person_demographics["person"]["names"]["given_name"],
-                  "family_name" =>  person_demographics["person"]["names"]["family_name"],
-                  "family_name2" => person_demographics["person"]["names"]["family_name2"]
-                  },
-      "birth_year" => person_demographics['person']['birth_year'],
-      "birth_month" => person_demographics['person']['birth_month'],
-      "birth_day" => person_demographics['person']['birth_day'],
-      "addresses" => {"city_village" => person_demographics['person']['addresses']['city_village'],
-                      "address2" => nil,
-                      "state_province" => nil,
-                      "county_district" => nil
-                      },
-      "attributes" => {"occupation" => person_demographics['person']['occupation'],
-                      "home_phone_number" => nil,
-                      "office_phone_number" => nil,
-                      "cell_phone_number" => nil
-                      },
-      "patient" => {"identifiers" => {"National id" => person_demographics['person']['patient']['identifiers']['National id'],
-                                      "ARV Number" => ['person']['patient']['identifiers']['ARV Number']
-                                      }
-                   },
-      "date_changed" => person_demographics['person']['date_changed']
-
-    }
-    results["person"] = result_hash
-    return results
-=end
+      results       = self.search(search_params)
     end
   end
 
