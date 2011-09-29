@@ -105,7 +105,7 @@ class PatientsController < ApplicationController
       redirect_to :clinic
     else
       @relationships = @patient.relationships rescue []
-      @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
+      @restricted    = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
       @restricted.each do |restriction|
         @relationships = restriction.filter_relationships(@relationships)
       end
@@ -118,13 +118,16 @@ class PatientsController < ApplicationController
       redirect_to :clinic
     else
       next_form = next_task(@patient)
-      redirect_to next_form and return if next_form.match(/Reception/i)
-      @relationships = @patient.relationships rescue []
-      @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
-      @restricted.each do |restriction|
-        @relationships = restriction.filter_relationships(@relationships)
+      if next_form.match(/Reception/i)
+        redirect_to next_form
+      else
+        @relationships = @patient.try(:relationships) || []
+        @restricted    = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id })
+        @restricted.each do |restriction|
+          @relationships = restriction.filter_relationships(@relationships)
+        end
+        render :template => 'dashboards/relationships', :layout => 'dashboard'
       end
-      render :template => 'dashboards/relationships', :layout => 'dashboard'
     end
   end
 
@@ -343,13 +346,12 @@ class PatientsController < ApplicationController
 
   def next_available_arv_number
     next_available_arv_number = PatientIdentifier.next_available_arv_number
-    render :text => next_available_arv_number.gsub(PatientIdentifier.site_prefix,'').strip rescue nil
+    render :text => next_available_arv_number.gsub(PatientIdentifier.site_prefix, '').strip rescue nil
   end
   
   def assigned_arv_number
-    assigned_arv_number = PatientIdentifier.find(:all,:conditions => ['voided = 0 AND identifier_type = ?',
-        PatientIdentifierType.find_by_name('ARV Number').id]).collect do |i|
-      i.identifier.gsub(PatientIdentifier.site_prefix,'').strip.to_i
+    assigned_arv_number = PatientIdentifier.typed('ARV Number').all(:conditions => {:voided => 0}).collect do |i|
+      i.identifier.gsub(PatientIdentifier.site_prefix, '').strip.to_i
     end rescue nil
     render :text => assigned_arv_number.sort.to_json rescue nil 
   end
@@ -361,10 +363,12 @@ class PatientsController < ApplicationController
       @edit_page  = Patient.edit_mastercard_attribute(params[:field].to_s)
 
       if @edit_page == 'guardian'
-        @guardian = {}
-        @patient.person.relationships.map{|r| @guardian[Person.find(r.person_b).name] = Person.find(r.person_b).id.to_s;'' }
+        @guardian = @patient.person.relationships.inject({}) do |mem, r|
+          mem[r.relation.name] = r.relation.id.to_s
+          mem
+        end
         if @guardian == {}
-          redirect_to :controller => 'relationships' , :action => 'search', :patient_id => @patient_id
+          redirect_to :controller => 'relationships', :action => 'search', :patient_id => @patient_id
         end
       end
     else
@@ -411,16 +415,16 @@ class PatientsController < ApplicationController
   end
 
   def export_to_csv
-    ( Patient.all(:limit => 10) || [] ).each do | patient |
+    Patient.all(:limit => 10).each do |patient|
       csv_string = FasterCSV.generate do |csv|
         # header row
-        csv << ["ARV number", "National ID"]
+        csv << ['ARV number', 'National ID']
         csv << [patient.arv_number, patient.national_id]
-        csv << ["Name", "Age", "Sex", "Init Wt(Kg)", "Init Ht(cm)", "BMI","Transfer-in"]
-        transfer_in = patient.person.observations.recent(1).question("HAS TRANSFER LETTER").all rescue nil
+        csv << ['Name', 'Age', 'Sex', 'Init Wt(Kg)', 'Init Ht(cm)', 'BMI','Transfer-in']
+        transfer_in = patient.person.observations.recent(1).question('HAS TRANSFER LETTER').all rescue nil
         transfer_in.blank? == true ? transfer_in = 'NO' : transfer_in = 'YES'
         csv << [patient.name,patient.person.age, patient.person.sex,patient.initial_weight,patient.initial_height,patient.initial_bmi,transfer_in]
-        csv << ["Location", "Land-mark", "Occupation", "Init Wt(Kg)", "Init Ht(cm)", "BMI", "Transfer-in"]
+        csv << ['Location', 'Land-mark', 'Occupation', 'Init Wt(Kg)', "Init Ht(cm)", 'BMI', 'Transfer-in']
 
 =begin
         # data rows
@@ -529,13 +533,12 @@ rm /tmp/output-#{session[:user_id]}.pdf
     @amount_needed    = 0
     @amounts_required = 0
 
-    type = EncounterType.find_by_name('TREATMENT')
     session_date = session[:datetime].to_date rescue Date.today
-    Order.find(:all,
-      :joins      => "INNER JOIN encounter e USING (encounter_id)",
-      :conditions => ["encounter_type = ? AND e.patient_id = ? AND DATE(encounter_datetime) = ?",
-        type.id,@patient.id,session_date]).each do |order|
-      
+    orders = @patient.orders.all \
+      :include    => {:encounters => :encounter_type},
+      :conditions => {:encounter_type => {:name => 'TREATMENT'}, 'DATE(encounter_datetime)' => session_date}
+
+    orders.each do |order|      
       @amount_needed    = @amount_needed    + (order.drug_order.amount_needed.to_i rescue 0)
       @amounts_required = @amounts_required + (order.drug_order.total_required rescue 0)
     end
@@ -577,29 +580,34 @@ rm /tmp/output-#{session[:user_id]}.pdf
   end
 
   def number_of_booked_patients
-    date = params[:date].to_date
+    date           = params[:date].to_date
     encounter_type = EncounterType.find_by_name('APPOINTMENT')
-    concept_id = ConceptName.find_by_name('APPOINTMENT DATE').concept_id
-    count = Observation.count(:all,
-            :joins      => "INNER JOIN encounter e USING(encounter_id)",:group => "value_datetime",
-            :conditions => ["concept_id = ? AND encounter_type = ? AND value_datetime >= ? AND value_datetime <= ?",
-            concept_id,encounter_type.id,date.strftime('%Y-%m-%d 00:00:00'),date.strftime('%Y-%m-%d 23:59:59')])
+    concept_id     = ConceptName['APPOINTMENT DATE'].concept_id
+    count = Observation.all \
+            :joins      => 'INNER JOIN encounter e USING(encounter_id)',
+            :group      => 'value_datetime',
+            :conditions => ['concept_id = ? AND encounter_type = ? AND value_datetime >= ? AND value_datetime <= ?',
+            concept_id, encounter_type.id, date.strftime('%Y-%m-%d 00:00:00'), date.strftime('%Y-%m-%d 23:59:59')]
     count = count.values unless count.blank?
     count = '0' if count.blank?
     render :text => count
   end
 
   def recent_lab_orders_print
-    patient = Patient.find(params[:id])
-    lab_orders_label = params[:lab_tests].split(":")
+    patient          = Patient.find(params[:id])
+    lab_orders_label = params[:lab_tests].split(':')
 
     label_commands = patient.recent_lab_orders_label(lab_orders_label)
-    send_data(label_commands.to_s,:type=>"application/label; charset=utf-8", :stream=> false, :filename=>"#{patient.id}#{rand(10000)}.lbl", :disposition => "inline")
+    send_data label_commands.to_s,
+              :type        => 'application/label; charset=utf-8',
+              :stream      => false,
+              :filename    => "#{patient.id}#{rand(10000)}.lbl",
+              :disposition => 'inline'
   end
 
   def print_recent_lab_orders_label
     #patient = Patient.find(params[:id])
-    lab_orders_label = params[:lab_tests].join(":")
+    lab_orders_label = params[:lab_tests].join(':')
 
     #raise lab_orders_label.to_s
     #label_commands = patient.recent_lab_orders_label(lab_orders_label)
@@ -617,7 +625,6 @@ rm /tmp/output-#{session[:user_id]}.pdf
   def next_task_description
     @task = Task.find(params[:task_id])
     render :template => 'dashboards/next_task_description', :layout => false
-  end
-    
-    
+  end    
+
 end

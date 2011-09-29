@@ -61,6 +61,10 @@ class Person < ActiveRecord::Base
     end
   end
 
+  delegate :national_id,
+      :to        => :patient,
+      :allow_nil => true
+
   def after_void(reason = nil)
     self.patient.void(reason) rescue nil
     self.names.each{|row| row.void(reason) }
@@ -202,9 +206,10 @@ class Person < ActiveRecord::Base
     }
   end
 
-  def self.identifiers
+  def identifiers
     self.patient.patient_identifiers.inject({}) do |mem, identifier|
       mem[identifier.type.name] = identifier.identifier
+      mem
     end
   end
 
@@ -271,8 +276,9 @@ class Person < ActiveRecord::Base
       existing_person_attribute.update_attributes(:value => value.to_s)
     else
       type_id = PersonAttributeType[attr_name].id
-      self.person_attributes.create(:person_attribute_type_id => type_id, :value => value.to_s)
+      self.person_attributes.create(:person_attribute_type_id => type_id, :value => value.to_s, :creator =>  1)
     end
+    self.save
     value
   end
 

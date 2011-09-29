@@ -15,46 +15,48 @@ class Mastercard
    :first_positive_hiv_test_type, :months_on_art
 
   def self.demographics(patient_obj)
-    visits = self.new()
+    visits = self.new
     person_demographics = patient_obj.person.demographics
-    visits.patient_id = patient_obj.id
-    visits.arv_number = patient_obj.get_identifier('ARV Number')
-    visits.address = person_demographics['person']['addresses']['city_village']
-    visits.national_id = person_demographics['person']['patient']['identifiers']['National id']
-    visits.name = person_demographics['person']['names']['given_name'] + ' ' + person_demographics['person']['names']['family_name'] rescue nil
-    visits.sex = person_demographics['person']['gender']
-    visits.age =patient_obj.person.age
-    visits.occupation = person_demographics['person']['attributes']['occupation']
-    visits.address = person_demographics['person']['addresses']['city_village']
-    visits.landmark = person_demographics['person']['addresses']['address1']
-    visits.init_wt = patient_obj.initial_weight
-    visits.init_ht = patient_obj.initial_height
-    visits.bmi = patient_obj.initial_bmi
-    visits.agrees_to_followup = patient_obj.person.observations.recent(1).question("Agrees to followup").all rescue nil
+    visits.patient_id   = patient_obj.id
+    visits.arv_number   = patient_obj.get_identifier('ARV Number')
+    visits.address      = person_demographics['person']['addresses'][0]['city_village']
+    visits.national_id  = person_demographics['person']['identifiers']['National id']
+    visits.name         = person_demographics['person']['names']['given_name'] + ' ' + person_demographics['person']['names']['family_name'] rescue nil
+    visits.sex          = person_demographics['person']['gender']
+    visits.age          = patient_obj.person.age
+    visits.occupation   = person_demographics['person']['attributes']['occupation']
+    visits.address      = person_demographics['person']['addresses'][0]['city_village']
+    visits.landmark     = person_demographics['person']['addresses'][0]['address1']
+    visits.init_wt      = patient_obj.initial_weight
+    visits.init_ht      = patient_obj.initial_height
+    visits.bmi          = patient_obj.initial_bmi
+    visits.agrees_to_followup = patient_obj.person.observations.recent(1).question('Agrees to followup').all rescue nil
     visits.agrees_to_followup = visits.agrees_to_followup.to_s.split(':')[1].strip rescue nil
-    visits.hiv_test_date = patient_obj.person.observations.recent(1).question("Confirmatory HIV test date").all rescue nil
-    visits.hiv_test_date = visits.hiv_test_date.to_s.split(':')[1].strip rescue nil
-    visits.hiv_test_location = patient_obj.person.observations.recent(1).question("Confirmatory HIV test location").all rescue nil
-    visits.hiv_test_location = visits.hiv_test_location.to_s.split(':')[1].strip rescue nil
-    visits.guardian = patient_obj.person.relationships.map{|r|Person.find(r.person_b).name}.join(' : ') rescue 'NONE'
+    visits.hiv_test_date      = patient_obj.person.observations.recent(1).question('Confirmatory HIV test date').all rescue nil
+    visits.hiv_test_date      = visits.hiv_test_date.to_s.split(':')[1].strip rescue nil
+    visits.hiv_test_location  = patient_obj.person.observations.recent(1).question('Confirmatory HIV test location').all rescue nil
+    visits.hiv_test_location  = visits.hiv_test_location.to_s.split(':')[1].strip rescue nil
+    visits.guardian           = patient_obj.person.relationships.map{|r|Person.find(r.person_b).name}.join(' : ') rescue 'NONE'
     visits.reason_for_art_eligibility = patient_obj.reason_for_art_eligibility
-    visits.transfer_in = patient_obj.transfer_in? #pb: bug-2677 Made this to use the newly created patient model method 'transfer_in?'
+    visits.transfer_in        = patient_obj.transfer_in? #pb: bug-2677 Made this to use the newly created patient model method 'transfer_in?'
+
     visits.transfer_in == false ? visits.transfer_in = 'NO' : visits.transfer_in = 'YES'
     
-    visits.transfer_in_date = patient_obj.person.observations.recent(1).question("HAS TRANSFER LETTER").all.collect{|o| 
-            o.obs_datetime if o.answer_string.strip == "YES"}.last rescue nil
+    visits.transfer_in_date = patient_obj.person.observations.recent(1).question('HAS TRANSFER LETTER').all.collect do |o|
+      o.obs_datetime if o.answer_string.strip == 'YES'
+    end.last rescue nil
 
     regimens = {}
     regimen_types = ['FIRST LINE ANTIRETROVIRAL REGIMEN','ALTERNATIVE FIRST LINE ANTIRETROVIRAL REGIMEN','SECOND LINE ANTIRETROVIRAL REGIMEN']
     regimen_types.map do | regimen |
-      concept_member_ids = Concept.find_by_name(regimen).concept_members.collect{|c|c.concept_id}
+      concept_member_ids = Concept[regimen].concept_members.collect(&:concept_id)
       case regimen
-        when 'FIRST LINE ANTIRETROVIRAL REGIMEN'
-          regimens[regimen] = concept_member_ids
-        when 'ALTERNATIVE FIRST LINE ANTIRETROVIRAL REGIMEN'
-          regimens[regimen] = concept_member_ids
-        when 'SECOND LINE ANTIRETROVIRAL REGIMEN'
-          regimens[regimen] = concept_member_ids
+      when 'FIRST LINE ANTIRETROVIRAL REGIMEN'
+        regimens[regimen] = concept_member_ids
+      when 'ALTERNATIVE FIRST LINE ANTIRETROVIRAL REGIMEN'
+        regimens[regimen] = concept_member_ids
+      when 'SECOND LINE ANTIRETROVIRAL REGIMEN'
+        regimens[regimen] = concept_member_ids
       end
     end
 
@@ -62,10 +64,10 @@ class Mastercard
     encounter_type = EncounterType.find_by_name('TREATMENT').id
     regimens.map do | regimen_type , ids |
       encounter = Encounter.find(:first,
-                                 :joins => "INNER JOIN orders ON encounter.encounter_id = orders.encounter_id",
-                                 :conditions =>["encounter_type=? AND encounter.patient_id = ? AND concept_id IN (?) 
-                                 AND encounter.voided = 0",encounter_type , patient_obj.id , ids ],
-                                 :order =>"encounter_datetime")
+                                 :joins      => 'INNER JOIN orders ON encounter.encounter_id = orders.encounter_id',
+                                 :conditions => ["encounter_type=? AND encounter.patient_id = ? AND concept_id IN (?) 
+                                 AND encounter.voided = 0", encounter_type, patient_obj.id, ids],
+                                 :order => 'encounter_datetime')
       first_treatment_encounters << encounter unless encounter.blank?
     end
 

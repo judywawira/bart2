@@ -28,4 +28,36 @@ class RemoteDemographicsServer
     nil
   end
 
+  def push(national_id, demographics)
+    payload = {
+      'person' => {
+            'data'            => demographics,
+#             'version_number'  => self.remote_version_number,
+#             'created_at'      => self.created_at,
+#             'updated_at'      => self.updated_at,
+#             'creator_id'      => self.creator_id,
+#             'creator_site_id' => Site.current_id
+      },
+      'npid' => {
+        'value' => national_id
+      },
+      'site' => {
+        'id'   => 1,
+        'code' => 'DUMMY',
+        'name' => 'DUMMY'
+      }
+    }
+    self.base_resource[id].put(payload, :accept => :json) do |response, request, status|
+      case status
+      when Net::HTTPOK
+        true
+      else
+        raise status.inspect
+      end
+    end
+#   rescue => e
+#     Rails.logger.error "FAILED pushing demographics data to remote: #{e}"
+#     false
+  end
+
 end
