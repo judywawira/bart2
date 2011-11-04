@@ -31,9 +31,15 @@ class Observation < ActiveRecord::Base
   named_scope :old, lambda {|number|
     {:order => 'obs_datetime ASC, date_created ASC', :limit => number}
   }
-        concept_id = concept.to_i || ConceptName[concept].concept_id
-        {:conditions => {:concept_id => concept_id}}
-      }
+
+  named_scope :on_date, lambda {|session_date|
+    {:conditions => ['DATE(encounter.encounter_datetime) = DATE(?)', session_date]}
+  }
+
+  named_scope :with_concept, lambda {|concept|
+    concept_id = concept.to_i || ConceptName[concept].concept_id
+    {:conditions => {:concept_id => concept_id}}
+  }
 
   named_scope :named, lambda{|name|
     { :include    => :concept_name,

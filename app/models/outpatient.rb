@@ -10,10 +10,8 @@ class Outpatient
     concept_names << 'DRUGS DISPENSED'
     concept_names << 'OTHER DRUGS'
     
-    concept_names.each do | concept_name |
-      concept_id = ConceptName.find_by_name(concept_name).concept_id
-      patient_observations = Observation.find(:all,:conditions => ["concept_id = ? and person_id = ?",
-                                              concept_id,patient_obj.patient_id],:order => "obs.obs_datetime DESC")
+    concept_names.each do |concept_name|
+      patient_observations = Observation.with_concept(concept_name).all(:conditions => {:person_id => patient_obj.patient_id}], :order => 'obs.obs_datetime DESC')
 
       patient_observations.each do | obs |
 

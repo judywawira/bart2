@@ -10,7 +10,25 @@ class Encounter < ActiveRecord::Base
   belongs_to :patient, :conditions => {:voided => 0}
 
   # TODO, this needs to account for current visit, which needs to account for possible retrospective entry
-  named_scope :current, :conditions => 'DATE(encounter.encounter_datetime) = CURRENT_DATE()'
+  named_scope :current,
+      :conditions => 'DATE(encounter.encounter_datetime) = CURRENT_DATE()'
+
+  named_scope :recent,
+      :order => 'encounter_datetime DESC'
+
+  named_scope :typed, lambda {|type|
+    { :conditions => {:encounter_type => type.is_a?(Integer) ? type : EncounterType[type].id} }
+  }
+
+  named_scope :with_concept, lambda {|concept_name|
+    { :include    => :observations,
+      :conditions => {:concept_id => ConceptName['ARV regimen type'].concept_id}
+    }
+  }
+
+  def self.most_recent_for_type(type_name)
+    self.recent.typed(type_name).first
+  end
 
   def before_save
     self.provider = User.current_user if self.provider.blank?
