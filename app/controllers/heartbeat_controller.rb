@@ -1,16 +1,15 @@
 class HeartbeatController < ApplicationController
-
-   before_filter :authorize, :except => ['update']
+  before_filter :authorize,
+      :except => ['update']
 
   def update
-    ip = request.env['REMOTE_ADDR']
-		time = Time.now
+    ip   = request.env['REMOTE_ADDR']
+    time = Time.now
 #		@location = params[:location] || ""
-		url = params[:url] || ""
-    username = params[:username] rescue nil
-    username = User.find(session[:user_id]).username rescue '' unless username
+    url  = params[:url] || ''
+    username = params[:username] || User.find(session[:user_id]).try(:username)
     load_average = `uptime | cut -d ":" -f 5 | cut -d "," -f 1`
-    debug_string = ""
+    debug_string = ''
 
     hb_params = params
 
@@ -20,7 +19,7 @@ class HeartbeatController < ApplicationController
     hb_params.delete(:controller)
     hb_params[:load_average] = load_average
   
-    hb_params.each{|property, value|
+    hb_params.each do |property, value|
       heart_beat_attributes = Heartbeat.new
       heart_beat_attributes.ip = ip
       heart_beat_attributes.time_stamp = time
@@ -30,7 +29,7 @@ class HeartbeatController < ApplicationController
       heart_beat_attributes.username = username
       heart_beat_attributes.save!
       debug_string += "#{property}: #{value}\n"
-    }
+    end
     render :text => time.to_s + "\n" + ip + "\n"  + debug_string 
 
 # TODO stuff this into a db table - probably a flexible table that looks like:

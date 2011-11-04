@@ -57,7 +57,7 @@ class Person < ActiveRecord::Base
       :dependent   => :destroy,
       :conditions  => {:voided => 0} do
     def find_by_concept_name(name)
-      all(:conditions => {:concept_id => ConceptName[name].concept_id}) rescue []
+      all(:include => :concept_name, :conditions => {:concept_name => {:name => name}})
     end
   end
 
@@ -96,8 +96,8 @@ class Person < ActiveRecord::Base
     # it is March and the patient says they are 25, they stay 25 (not become 24)
     birth_date = self.birthdate
     estimate   = self.birthdate_estimated == 1
-    patient_age += (estimate && birth_date.month == 7 && birth_date.day == 1  && 
-      today.month < birth_date.month && self.date_created.year == today.year) ? 1 : 0
+    patient_age += (estimate and birth_date.month == 7 and birth_date.day == 1  and
+                    today.month < birth_date.month and self.date_created.year == today.year) ? 1 : 0
   end
 
   def age_in_months(today = Date.today)

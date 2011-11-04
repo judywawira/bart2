@@ -38,14 +38,12 @@ class PeopleController < ApplicationController
     end
 
     if Location.current_location.blank?
-      Location.current_location = Location.find(GlobalProperty.find_by_property('current_health_center_id').property_value) rescue []
+      Location.current_location = Location.current_health_center.id
     end
 
     person = Person.create_from_remote(person_params)
     if person
-      patient = Patient.new
-      patient.patient_id = person.id
-      patient.save
+      patient = Patient.create :patient_id => person.id
       patient.national_id_label
     end
     #render :text => person.demographics.to_json
@@ -61,7 +59,7 @@ class PeopleController < ApplicationController
   
   def art_information
     national_id = params['person']['patient']['identifiers']['National id'] rescue nil
-    art_info    = Patient.art_info_for_remote(national_id)
+    art_info    = Patient.find_by_national_id(national_id).try :art_info_for_remote
     render :text => art_info.to_json
   end
  

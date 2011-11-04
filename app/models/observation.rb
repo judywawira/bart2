@@ -25,18 +25,23 @@ class Observation < ActiveRecord::Base
   has_many :concept_names,
       :through => :concept
 
-  named_scope :recent,
-      lambda {|number| {:order => 'obs_datetime DESC, date_created DESC', :limit => number}}
-  named_scope :old,
-      lambda {|number| {:order => 'obs_datetime ASC, date_created ASC', :limit => number}}
-  named_scope :question,
-      lambda {|concept|
+  named_scope :recent, lambda {|number|
+    {:order => 'obs_datetime DESC, date_created DESC', :limit => number}
+  }
+  named_scope :old, lambda {|number|
+    {:order => 'obs_datetime ASC, date_created ASC', :limit => number}
+  }
         concept_id = concept.to_i || ConceptName[concept].concept_id
         {:conditions => {:concept_id => concept_id}}
       }
 
+  named_scope :named, lambda{|name|
+    { :include    => :concept_name,
+      :conditions => {:concept_name => {:name => name}}}
+  }
+
   def validate
-    if value_numeric != '0.0' and value_numeric != '0' and not value_numeric.blank?
+    if (value_numeric != '0.0' and value_numeric != '0' and not value_numeric.blank?)
       value_numeric = value_numeric.to_f
       # TODO
       # value_numeric = nil if value_numeric == 0.0

@@ -9,7 +9,7 @@ class PatientsController < ApplicationController
     @programs      = @patient.patient_programs.all
     @alerts        = @patient.alerts(session_date)
     # This code is pretty hacky at the moment
-    @restricted = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id})
+    @restricted    = ProgramLocationRestriction.all(:conditions => {:location_id => Location.current_health_center.id})
     @restricted.each do |restriction|    
       @encounters    = restriction.filter_encounters(@encounters)
       @prescriptions = restriction.filter_orders(@prescriptions)
@@ -39,13 +39,13 @@ class PatientsController < ApplicationController
         :select     => 'encounter_id, name encounter_type_name, count(*) c',
         :joins      => 'INNER JOIN encounter_type ON encounter_type_id = encounter_type',
         :conditions => ['patient_id = ? AND encounter_type IN (?) AND DATE(encounter_datetime) = ?', params[:id], encounter_types,session_date],
+      :conditions => ['patient_id = ? AND encounter_type IN (?) AND DATE(encounter_datetime) = ?',
         :group      => 'encounter_type').collect do |rec| 
       if User.current_user.user_roles.map{|r|r.role}.join(',').match(/Registration|Clerk/i)
         next unless rec.observations[0].to_s.match(/Workstation location:\s*Outpatient/i)
       end
       [rec.encounter_id , rec.encounter_type_name , rec.c]
     end
-    
     render :template => 'dashboards/opdoverview_tab', :layout => false
   end
 
@@ -145,11 +145,11 @@ class PatientsController < ApplicationController
 
     if use_filing_number and not patient.get_identifier('Filing Number').blank?
       @links << ['Filing Number (Print)', "/patients/print_filing_number/#{patient.id}"]
-    end 
+    end
 
     if use_filing_number and patient.get_identifier('Filing Number').blank?
       @links << ['Filing Number (Create)', "/patients/set_filing_number/#{patient.id}"]
-    end 
+    end
 
     if GlobalProperty.use_user_selected_activities
       @links << ['Change User Activities', "/user/activities/#{User.current_user.id}?patient_id=#{patient.id}"]
@@ -385,7 +385,7 @@ class PatientsController < ApplicationController
   def summary
     @encounter_type = params[:skipped]
     @patient_id     = params[:patient_id]
-    render :layout => "menu"
+    render :layout => 'menu'
   end
 
   def set_filing_number
@@ -619,7 +619,7 @@ rm /tmp/output-#{session[:user_id]}.pdf
   def recent_lab_orders
     patient = Patient.find(params[:patient_id])
     @lab_order_labels = patient.get_recent_lab_orders_label
-    @patient_id = params[:patient_id]
+    @patient_id       = params[:patient_id]
   end
 
   def next_task_description
